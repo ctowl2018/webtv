@@ -4,6 +4,7 @@ import android.text.TextUtils;
 
 import com.fongmi.android.tv.server.Nano;
 import com.fongmi.android.tv.server.Server;
+import com.fongmi.android.tv.server.ServerAuth;
 import com.fongmi.android.tv.server.impl.Process;
 import com.fongmi.android.tv.utils.UrlSafety;
 import com.github.catvod.crawler.SpiderDebug;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -29,8 +31,19 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
 
-/** Compatibility proxy for Python live sources which emit 127.0.0.1:9978/m3u8 links. */
+/**
+ * HLS relay.
+ *
+ * <p>Two callers depend on it. Python live sources emit {@code 127.0.0.1:9978/m3u8} links and
+ * rely on the built-in headers below. Casting instead needs two extra things: the real headers
+ * the player used, and rewritten URLs addressed to this phone over the LAN — a renderer fetching
+ * {@code 127.0.0.1} would be asking itself. Both are selected per request, so the legacy path is
+ * untouched.</p>
+ */
 public class M3u8 implements Process {
+
+    /** Query param carrying a {@link HeaderStore} id. Absent means "use the legacy headers". */
+    public static final String PARAM_ID = "id";
 
     private static final String TAG = "live-m3u8";
     /**
@@ -50,6 +63,14 @@ public class M3u8 implements Process {
         return "/m3u8".equals(url);
     }
 
+    /**
+     * Registers the headers a cast must send upstream and returns the id to embed in the proxy
+     * URL. Public so the casting side can call it directly — it runs in the same process.
+     */
+    public static String registerHeaders(Map<String, String> headers) {
+        return HeaderStore.put(headers);
+    }
+
     @Override
     public Response doResponse(IHTTPSession session, String url, Map<String, String> files) {
         String target = session.getParms().get("url");
@@ -57,18 +78,23 @@ public class M3u8 implements Process {
         // The proxy target comes from a query param: without this guard any web page or LAN peer
         // could turn the device into an SSRF relay against the router, intranet or cloud metadata.
         if (!UrlSafety.isSafeHttpUrl(target)) return Nano.error(Response.Status.BAD_REQUEST, "Unsupported url");
+        String id = session.getParms().get(PARAM_ID);
+        Map<String, String> headers = HeaderStore.get(id);
+        // A renderer reaching us over the LAN must be sent LAN-addressed segment URLs; the local
+        // player keeps getting loopback ones exactly as before.
+        boolean lan = !ServerAuth.isLocal(session);
         okhttp3.Response upstream = null;
         try {
-            Request request = request(session, target);
+            Request request = request(session, target, headers);
             long start = System.currentTimeMillis();
             upstream = executeChecked(request);
-            SpiderDebug.log(TAG, "%s %s -> %s in %sms", request.method(), shortUrl(target), upstream.code(), System.currentTimeMillis() - start);
+            SpiderDebug.log(TAG, "%s %s -> %s in %sms lan=%s stored=%s", request.method(), shortUrl(target), upstream.code(), System.currentTimeMillis() - start, lan, id != null);
             ResponseBody body = upstream.body();
             if (body == null) {
                 upstream.close();
                 return Nano.error(Response.Status.INTERNAL_ERROR, "Empty upstream body");
             }
-            if (isPlaylist(upstream.request().url().toString(), body.contentType())) return playlist(upstream, body);
+            if (isPlaylist(upstream.request().url().toString(), body.contentType())) return playlist(upstream, body, id, lan);
             return stream(upstream, body);
         } catch (Throwable e) {
             if (upstream != null) upstream.close();
@@ -77,16 +103,30 @@ public class M3u8 implements Process {
         }
     }
 
-    private Request request(IHTTPSession session, String target) {
-        Request.Builder builder = new Request.Builder()
-                .url(target)
-                .header("User-Agent", DEFAULT_UA)
-                .header("Referer", DEFAULT_REFERER)
-                .header("Origin", DEFAULT_ORIGIN);
+    private Request request(IHTTPSession session, String target, Map<String, String> headers) {
+        Request.Builder builder = new Request.Builder().url(target);
+        Map<String, String> upstream = headerMap(headers);
+        for (Map.Entry<String, String> entry : upstream.entrySet()) builder.header(entry.getKey(), entry.getValue());
         String range = session.getHeaders().get("range");
         if (!TextUtils.isEmpty(range)) builder.header("Range", range);
         if (session.getMethod() == NanoHTTPD.Method.HEAD) builder.head();
         return builder.build();
+    }
+
+    /**
+     * With a stored context the caller's headers are authoritative and used as-is. Without one
+     * we fall back to the historical defaults, which the bundled Python live sources depend on.
+     *
+     * <p>Sending the 4gtv referer to an unrelated source would be worse than sending none: a
+     * mismatched referer is itself a reason for a CDN to answer 403.</p>
+     */
+    private Map<String, String> headerMap(Map<String, String> stored) {
+        if (!stored.isEmpty()) return stored;
+        Map<String, String> defaults = new LinkedHashMap<>();
+        defaults.put("User-Agent", DEFAULT_UA);
+        defaults.put("Referer", DEFAULT_REFERER);
+        defaults.put("Origin", DEFAULT_ORIGIN);
+        return defaults;
     }
 
     /**
@@ -119,12 +159,12 @@ public class M3u8 implements Process {
         return code == 301 || code == 302 || code == 303 || code == 307 || code == 308;
     }
 
-    private Response playlist(okhttp3.Response upstream, ResponseBody body) throws IOException {
+    private Response playlist(okhttp3.Response upstream, ResponseBody body, String id, boolean lan) throws IOException {
         try (upstream; body) {
             if (!upstream.isSuccessful()) return error(status(upstream.code()), "Playlist HTTP " + upstream.code());
             String text = body.string();
             if (!looksLikePlaylist(text)) return Nano.error(Response.Status.BAD_REQUEST, "Invalid playlist");
-            String rewritten = rewrite(upstream.request().url(), text);
+            String rewritten = rewrite(upstream.request().url(), text, id, lan);
             byte[] bytes = rewritten.getBytes(StandardCharsets.UTF_8);
             SpiderDebug.log(TAG, "playlist bytes=%s rewritten=%s url=%s", text.length(), bytes.length, shortUrl(upstream.request().url().toString()));
             return noCache(NanoHTTPD.newFixedLengthResponse(Response.Status.OK, MIME_M3U8, new ByteArrayInputStream(bytes), bytes.length));
@@ -144,16 +184,16 @@ public class M3u8 implements Process {
         return response;
     }
 
-    private String rewrite(HttpUrl base, String text) {
+    private String rewrite(HttpUrl base, String text, String id, boolean lan) {
         String[] lines = text.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
         StringBuilder output = new StringBuilder(text.length() + 512);
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             String trimmed = line.trim();
             if (!trimmed.isEmpty() && !trimmed.startsWith("#")) {
-                line = proxy(resolve(base, trimmed));
+                line = proxy(resolve(base, trimmed), id, lan);
             } else if (trimmed.startsWith("#") && trimmed.contains("URI=\"")) {
-                line = rewriteUriAttributes(base, line);
+                line = rewriteUriAttributes(base, line, id, lan);
             }
             output.append(line);
             if (i + 1 < lines.length) output.append('\n');
@@ -161,11 +201,11 @@ public class M3u8 implements Process {
         return output.toString();
     }
 
-    private String rewriteUriAttributes(HttpUrl base, String line) {
+    private String rewriteUriAttributes(HttpUrl base, String line, String id, boolean lan) {
         Matcher matcher = URI_ATTR.matcher(line);
         StringBuffer output = new StringBuffer();
         while (matcher.find()) {
-            String replacement = "URI=\"" + proxy(resolve(base, matcher.group(1))) + "\"";
+            String replacement = "URI=\"" + proxy(resolve(base, matcher.group(1)), id, lan) + "\"";
             matcher.appendReplacement(output, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(output);
@@ -177,8 +217,16 @@ public class M3u8 implements Process {
         return resolved == null ? value : resolved.toString();
     }
 
-    private String proxy(String target) {
-        return Server.get().getAddress("/m3u8?url=" + URLEncoder.encode(target, StandardCharsets.UTF_8));
+    /**
+     * Rewritten entries must come back through us, and carry the context id so segments keep
+     * using the same upstream headers. When the caller is on the LAN (a renderer) the address
+     * must be our LAN one and must carry the server token, otherwise the fetch is rejected.
+     */
+    private String proxy(String target, String id, boolean lan) {
+        StringBuilder path = new StringBuilder("/m3u8?url=").append(URLEncoder.encode(target, StandardCharsets.UTF_8));
+        if (!TextUtils.isEmpty(id)) path.append('&').append(PARAM_ID).append('=').append(id);
+        if (!lan) return Server.get().getAddress(path.toString());
+        return ServerAuth.withToken(Server.get().getAddress(false) + path);
     }
 
     private boolean isPlaylist(String url, MediaType type) {
