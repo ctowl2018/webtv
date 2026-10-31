@@ -14,7 +14,6 @@ import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Site;
@@ -177,7 +176,6 @@ public class SiteDialog extends BaseBottomSheetDialog implements SiteAdapter.OnC
             @Override
             public void success() {
                 Notify.dismiss();
-                LiveConfig.get().clear();
             }
 
             @Override

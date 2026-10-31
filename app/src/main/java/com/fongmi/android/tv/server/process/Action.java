@@ -218,7 +218,6 @@ public class Action implements Process {
         if (TextUtils.isEmpty(type)) return;
         switch (type) {
             case "home" -> RefreshEvent.home();
-            case "live" -> RefreshEvent.live();
             case "detail" -> RefreshEvent.detail();
             case "player" -> RefreshEvent.player();
             case "category" -> RefreshEvent.category();
@@ -402,7 +401,7 @@ public class Action implements Process {
         Backup backup = Backup.objectFrom(params.get("backup"));
         SyncOptions options = SyncOptions.objectFrom(params.get("options"));
         // A broken/null backup JSON parses into an empty Backup; restoring it with force=true
-        // would wipe every local site/live/config row. Fail the sync instead.
+        // would wipe every local site/config row. Fail the sync instead.
         if (options.isConfig() && backup.getConfig().isEmpty()) throw new IllegalStateException("Backup missing interface config data");
         if (options.isSpider() && files.containsKey(SyncFiles.PART_NAME)) {
             File archive = new File(files.get(SyncFiles.PART_NAME));

@@ -3,13 +3,10 @@ package com.fongmi.android.tv.setting;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.net.Uri;
 import android.os.Build;
 import android.os.LocaleList;
-import android.provider.Settings;
 import android.util.DisplayMetrics;
 
 import androidx.core.content.ContextCompat;
@@ -276,41 +273,12 @@ public class Setting {
         return Prefers.getBoolean("family_filter_enabled");
     }
 
-    public static void putFamilyFilter(boolean enabled) {
-        Prefers.put("family_filter_enabled", enabled);
-    }
-
     public static String getFamilyFilterKeywords() {
         return Prefers.getString("family_filter_keywords", "情色\n三级片");
     }
 
-    public static void putFamilyFilterKeywords(String keywords) {
-        Prefers.put("family_filter_keywords", keywords);
-    }
-
-    public static String getFamilyFilterPass() {
-        return Prefers.getString("family_filter_pass");
-    }
-
-    public static void putFamilyFilterPass(String pass) {
-        Prefers.put("family_filter_pass", pass);
-    }
-
     public static boolean isDriveCheck() {
         return Prefers.getBoolean("drive_check", true);
-    }
-
-    public static void putDriveCheck(boolean driveCheck) {
-        Prefers.put("drive_check", driveCheck);
-    }
-
-
-    public static boolean isPlaybackArtworkWall() {
-        return Prefers.getBoolean("playback_artwork_wall", true);
-    }
-
-    public static void putPlaybackArtworkWall(boolean artworkWall) {
-        Prefers.put("playback_artwork_wall", artworkWall);
     }
 
     public static boolean isCspWarmup() {
@@ -507,11 +475,6 @@ public class Setting {
         return Prefers.getString("shell_proxy_rules");
     }
 
-    public static void putShellProxyRules(String rules) {
-        Prefers.put("shell_proxy_rules", rules);
-        ProxySetting.apply();
-    }
-
     public static void putShellProxyConfig(String url, String rules) {
         Prefers.put("shell_proxy_url", url);
         Prefers.put("shell_proxy_rules", rules);
@@ -523,18 +486,8 @@ public class Setting {
         return Prefers.getString("shell_proxy_url");
     }
 
-    public static void putShellProxyUrl(String url) {
-        Prefers.put("shell_proxy_url", url);
-        ProxySetting.apply();
-    }
-
     public static String getShellProxyHosts() {
         return Prefers.getString("shell_proxy_hosts", "*");
-    }
-
-    public static void putShellProxyHosts(String hosts) {
-        Prefers.put("shell_proxy_hosts", hosts);
-        ProxySetting.apply();
     }
 
     public static boolean getUpdate() {

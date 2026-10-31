@@ -54,7 +54,7 @@ public class ConfigCenterActivity extends BaseActivity implements ConfigAdapter.
     protected void initView(Bundle savedInstanceState) {
         type = getTypeValue();
         setSupportActionBar(binding.toolbar);
-        binding.toolbar.setTitle(type == 0 ? R.string.config_center_vod : type == 1 ? R.string.config_center_live : R.string.config_center_wall);
+        binding.toolbar.setTitle(type == 0 ? R.string.config_center_vod : R.string.config_center_wall);
         binding.recycler.setHasFixedSize(true);
         binding.recycler.setLayoutManager(new LinearLayoutManager(this));
         binding.recycler.addItemDecoration(new SpaceItemDecoration(1, 12));
@@ -75,7 +75,6 @@ public class ConfigCenterActivity extends BaseActivity implements ConfigAdapter.
     @Override
     public void setConfig(Config config) {
         if (type == 0) VodActivityRouter.loadVod(this, config);
-        else if (type == 1) VodActivityRouter.loadLive(this, config);
         else VodActivityRouter.loadWall(this, config);
     }
 

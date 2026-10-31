@@ -5,7 +5,6 @@ import android.text.TextUtils;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.api.config.WallConfig;
-import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Backup;
 import com.fongmi.android.tv.bean.Config;
@@ -61,6 +60,7 @@ public class Manage implements Process {
     private static final int TREE_LIMIT = 300;
     private static final int LOGIN_STATE_FINDINGS_LIMIT = 300;
     private static final MediaType ZIP = MediaType.parse("application/zip");
+    private static final int[] CONFIG_TYPES = {0, 2};
 
     @Override
     public boolean isRequest(IHTTPSession session, String url) {
@@ -503,7 +503,7 @@ public class Manage implements Process {
         }
         JsonObject object = new JsonObject();
         JsonArray items = new JsonArray();
-        for (int type = 0; type <= 2; type++) {
+        for (int type : CONFIG_TYPES) {
             for (Config config : Config.getAll(type)) items.add(configObject(config, false));
             Config current = currentConfig(type);
             if (!current.isEmpty() && !containsConfig(items, current)) items.add(configObject(current, true));
@@ -519,7 +519,6 @@ public class Manage implements Process {
         Config config = Config.find(url, type);
         if (config.isEmpty()) return Nano.error(Status.NOT_FOUND, "Config not found");
         switch (type) {
-            case 1 -> LiveConfig.load(config, new Callback());
             case 2 -> WallConfig.load(config, new Callback());
             default -> VodConfig.load(config, new Callback());
         }
@@ -561,7 +560,6 @@ public class Manage implements Process {
 
     private Config currentConfig(int type) {
         return switch (type) {
-            case 1 -> LiveConfig.get().getConfig();
             case 2 -> WallConfig.get().getConfig();
             default -> VodConfig.get().getConfig();
         };
@@ -569,7 +567,6 @@ public class Manage implements Process {
 
     private String configTypeName(int type) {
         return switch (type) {
-            case 1 -> "直播";
             case 2 -> "壁纸";
             default -> "影视";
         };
@@ -939,10 +936,6 @@ public class Manage implements Process {
     private void reloadConfigs() {
         App.post(() -> VodConfig.get().clear().config(VodConfig.get().getConfig()).load(new Callback() {
         }));
-        App.post(() -> {
-            if (LiveConfig.hasLoadedLives() || !LiveConfig.get().getConfig().isEmpty() || CustomCspSetting.hasLives()) LiveConfig.get().clear().config(LiveConfig.get().getConfig()).load(new Callback() {
-            });
-        });
     }
 
     private JsonArray array(Iterable<String> values) {

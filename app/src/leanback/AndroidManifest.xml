@@ -108,14 +108,6 @@
             android:screenOrientation="sensorLandscape" />
 
         <activity
-            android:name=".ui.activity.LiveActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:parentActivityName=".ui.activity.HomeActivity"
-            android:screenOrientation="sensorLandscape" />
-
-        <activity
             android:name=".ui.activity.VideoActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"
             android:launchMode="singleTop"
@@ -169,11 +161,6 @@
             android:screenOrientation="sensorLandscape" />
 
         <activity
-            android:name=".ui.activity.SettingEnhanceActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
-            android:screenOrientation="sensorLandscape" />
-
-        <activity
             android:name=".ui.activity.ConfigCenterActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:screenOrientation="sensorLandscape" />
@@ -182,16 +169,6 @@
             android:name=".service.DLNARendererService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
-
-        <receiver
-            android:name=".receiver.BootReceiver"
-            android:exported="true"
-            android:priority="999">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-            </intent-filter>
-        </receiver>
 
     </application>
 </manifest>

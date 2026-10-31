@@ -3,7 +3,6 @@ package com.fongmi.android.tv.bean;
 import androidx.annotation.NonNull;
 
 import com.fongmi.android.tv.App;
-import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.api.loader.BaseLoader;
@@ -33,12 +32,10 @@ public class Backup {
     private static final String PLAYBACK_REMOTE_SYNC_CONFIG = "playback_remote_sync_config";
     private static final String PLAYBACK_WEBHOOK_CONFIG = "playback_webhook_config";
     private static final Set<String> DEPRECATED_PREFS = Set.of("theme_color", "wall_color");
-    private static final Set<String> APP_PREFS = Set.of("doh", "ua", "wall", "wall_type", "reset", "site_mode", "sync_mode", "sync_paths", "sync_device", "incognito", "family_filter_enabled", "family_filter_keywords", "family_filter_pass", "drive_check", "drive_check_cache", "playback_artwork_wall", "csp_warmup", "csp_warmup_mode", "csp_warmup_sites", "shell_proxy", "shell_proxy_rules", "shell_proxy_url", "shell_proxy_hosts", "viewing_record_sync_enabled", "viewing_record_sync_local_write", PLAYBACK_REMOTE_SYNC_CONFIG, PLAYBACK_WEBHOOK_CONFIG, "update", "adblock", "zhuyin", "language", "ui_scale", "crash", "player", "mpv_render", "render", "size", "scale", "buffer", "background", "speed", "caption", "tunnel", "audio_prefer", "video_prefer", "prefer_aac", "subtitle_text_size", "subtitle_position", "boot_live", "across", "change", "invert", "scale_live");
+    private static final Set<String> APP_PREFS = Set.of("doh", "ua", "wall", "wall_type", "reset", "site_mode", "sync_mode", "sync_paths", "sync_device", "incognito", "family_filter_enabled", "family_filter_keywords", "drive_check", "drive_check_cache", "csp_warmup", "csp_warmup_mode", "csp_warmup_sites", "shell_proxy", "shell_proxy_rules", "shell_proxy_url", "shell_proxy_hosts", "viewing_record_sync_enabled", "viewing_record_sync_local_write", PLAYBACK_REMOTE_SYNC_CONFIG, PLAYBACK_WEBHOOK_CONFIG, "update", "adblock", "zhuyin", "language", "ui_scale", "crash", "player", "mpv_render", "render", "size", "scale", "buffer", "background", "speed", "caption", "tunnel", "audio_prefer", "video_prefer", "prefer_aac", "subtitle_text_size", "subtitle_position");
 
     @SerializedName("site")
     private List<Site> site;
-    @SerializedName("live")
-    private List<Live> live;
     @SerializedName("keep")
     private List<Keep> keep;
     @SerializedName("config")
@@ -52,7 +49,6 @@ public class Backup {
         Backup backup = new Backup();
         backup.setPrefers(withoutDeprecated(Prefers.getPrefers().getAll()));
         backup.setSite(AppDatabase.get().getSiteDao().findAll());
-        backup.setLive(AppDatabase.get().getLiveDao().findAll());
         backup.setKeep(AppDatabase.get().getKeepDao().findAll());
         backup.setConfig(AppDatabase.get().getConfigDao().findAll());
         backup.setHistory(AppDatabase.get().getHistoryDao().findAll());
@@ -63,7 +59,6 @@ public class Backup {
         Backup backup = new Backup();
         if (options.isConfig()) {
             backup.setSite(AppDatabase.get().getSiteDao().findAll());
-            backup.setLive(AppDatabase.get().getLiveDao().findAll());
             backup.setConfig(AppDatabase.get().getConfigDao().findAll());
         }
         if (options.isKeep()) backup.setKeep(AppDatabase.get().getKeepDao().findAll());
@@ -88,12 +83,10 @@ public class Backup {
         // an aborted restore (process death, insert failure) must not leave a half-cleared database.
         db.runInTransaction(() -> {
             db.getSiteDao().delete();
-            db.getLiveDao().delete();
             db.getKeepDao().deleteAll();
             db.getConfigDao().delete();
             db.getHistoryDao().delete();
             db.getSiteDao().insertOrUpdate(getSite());
-            db.getLiveDao().insertOrUpdate(getLive());
             db.getKeepDao().insertOrUpdate(getKeep());
             db.getConfigDao().insertOrUpdate(getConfig());
             db.getHistoryDao().insertOrUpdate(getHistory());
@@ -130,11 +123,9 @@ public class Backup {
             if (options.isConfig()) {
                 if (force) {
                     db.getSiteDao().delete();
-                    db.getLiveDao().delete();
                     db.getConfigDao().delete();
                 }
                 db.getSiteDao().insertOrUpdate(getSite());
-                db.getLiveDao().insertOrUpdate(getLive());
                 cids.putAll(restoreConfig());
             }
             if (options.isKeep()) {
@@ -153,7 +144,6 @@ public class Backup {
 
     private void reloadConfig() {
         VodConfig.get().clear().init().load(new Callback());
-        LiveConfig.get().clear().init().load();
         WallConfig.get().init().load();
         ConfigEvent.common();
     }
@@ -240,14 +230,6 @@ public class Backup {
 
     public void setSite(List<Site> site) {
         this.site = site;
-    }
-
-    public List<Live> getLive() {
-        return live == null ? Collections.emptyList() : live;
-    }
-
-    public void setLive(List<Live> live) {
-        this.live = live;
     }
 
     public List<Keep> getKeep() {

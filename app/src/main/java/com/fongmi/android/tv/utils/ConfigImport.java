@@ -12,7 +12,6 @@ import com.fongmi.android.tv.impl.Callback;
 import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.utils.Json;
 import com.github.catvod.utils.Path;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import java.util.List;
@@ -33,7 +32,6 @@ public class ConfigImport {
         try {
             return switch (config.getType()) {
                 case 0 -> previewVod(config.url(url));
-                case 1 -> previewLive(config.url(url));
                 case 2 -> previewWall(config.url(url));
                 default -> Preview.error(config.getType(), url, "未知配置类型");
             };
@@ -49,53 +47,36 @@ public class ConfigImport {
         if (object.has("msg")) return Preview.error(config.getType(), config.getUrl(), object.get("msg").getAsString());
         if (object.has("urls")) {
             List<Depot> depots = Depot.arrayFrom(object.getAsJsonArray("urls").toString());
-            return Preview.success(config.getType(), config.getUrl(), depots.isEmpty() ? "配置仓库（空）" : "配置仓库", depots.size(), 0, !Json.safeString(object, "logo").isEmpty(), false, true, depots.isEmpty() ? "未发现可用配置入口" : "检测到配置仓库入口");
+            return Preview.success(config.getType(), config.getUrl(), depots.isEmpty() ? "配置仓库（空）" : "配置仓库", depots.size(), !Json.safeString(object, "logo").isEmpty(), false, true, depots.isEmpty() ? "未发现可用配置入口" : "检测到配置仓库入口");
         }
         int siteCount = Json.safeListElement(object, "sites").size();
-        int liveCount = Json.safeListElement(object, "lives").size();
         String name = !TextUtils.isEmpty(config.getName()) ? config.getName() : Json.safeString(object, "notice");
         if (TextUtils.isEmpty(name)) name = Json.safeString(object, "home");
-        return Preview.success(config.getType(), config.getUrl(), TextUtils.isEmpty(name) ? "点播配置" : name, siteCount, liveCount, !Json.safeString(object, "logo").isEmpty(), false, false, siteCount > 0 ? "导入后可直接使用" : "配置可解析，但未发现站点");
+        return Preview.success(config.getType(), config.getUrl(), TextUtils.isEmpty(name) ? "点播配置" : name, siteCount, !Json.safeString(object, "logo").isEmpty(), false, false, siteCount > 0 ? "导入后可直接使用" : "配置可解析，但未发现站点");
     }
 
-    private static Preview previewLive(Config config) throws Throwable {
-        String text = Decoder.getJson(UrlUtil.convert(config.getUrl()), "ConfigImport");
-        if (Json.isObj(text)) {
-            JsonObject object = Json.parse(text).getAsJsonObject();
-            if (object.has("msg")) return Preview.error(config.getType(), config.getUrl(), object.get("msg").getAsString());
-            if (object.has("urls")) {
-                List<Depot> depots = Depot.arrayFrom(object.getAsJsonArray("urls").toString());
-                return Preview.success(config.getType(), config.getUrl(), depots.isEmpty() ? "直播配置仓库（空）" : "直播配置仓库", depots.size(), 0, false, false, true, depots.isEmpty() ? "未发现可用配置入口" : "检测到配置仓库入口");
-            }
-            int liveCount = Json.safeListElement(object, "lives").size();
-            return Preview.success(config.getType(), config.getUrl(), TextUtils.isEmpty(config.getName()) ? "直播配置" : config.getName(), liveCount, 0, false, false, false, liveCount > 0 ? "导入后可直接使用" : "配置可解析，但未发现直播源");
-        }
-        int lines = text.split("\\r?\\n").length;
-        return Preview.success(config.getType(), config.getUrl(), TextUtils.isEmpty(config.getName()) ? "直播文本源" : config.getName(), lines, 0, false, false, false, lines > 0 ? "导入后可直接使用" : "直播文本为空");
-    }
 
     private static Preview previewWall(Config config) {
         String url = config.getUrl();
         String label = TextUtils.isEmpty(config.getName()) ? "壁纸配置" : config.getName();
         if (url.startsWith("file") && !Path.exists(Path.local(url))) return Preview.error(config.getType(), url, "本地文件不存在");
-        return Preview.success(config.getType(), url, label, 1, 0, false, false, false, "导入后将直接用于壁纸");
+        return Preview.success(config.getType(), url, label, 1, false, false, false, "导入后将直接用于壁纸");
     }
 
 
-    public record Preview(int type, String url, String title, int primaryCount, int secondaryCount, boolean hasLogo, boolean hasHomePage, boolean depot, boolean valid, String summary) {
+    public record Preview(int type, String url, String title, int primaryCount, boolean hasLogo, boolean hasHomePage, boolean depot, boolean valid, String summary) {
         public static Preview empty(int type) {
-            return new Preview(type, "", "", 0, 0, false, false, false, true, "已清空该配置");
+            return new Preview(type, "", "", 0, false, false, false, true, "已清空该配置");
         }
 
-        public static Preview success(int type, String url, String title, int primaryCount, int secondaryCount, boolean hasLogo, boolean hasHomePage, boolean depot, String summary) {
-            return new Preview(type, url, title, primaryCount, secondaryCount, hasLogo, hasHomePage, depot, true, summary);
+        public static Preview success(int type, String url, String title, int primaryCount, boolean hasLogo, boolean hasHomePage, boolean depot, String summary) {
+            return new Preview(type, url, title, primaryCount, hasLogo, hasHomePage, depot, true, summary);
         }
 
         public static Preview error(int type, String url, String summary) {
-            return new Preview(type, url, "", 0, 0, false, false, false, false, summary);
+            return new Preview(type, url, "", 0, false, false, false, false, summary);
         }
     }
-
     public static Callback toCallback(Runnable start, java.util.function.Consumer<Preview> success, java.util.function.Consumer<String> error) {
         return new Callback() {
             @Override

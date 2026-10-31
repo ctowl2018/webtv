@@ -428,7 +428,7 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
     <string name="dialog_select_title">选择章节</string>
     <string name="dialog_config_hint">请输入配置…</string>
     <string name="dialog_config_name">请输入名称…</string>
-    <string name="dialog_config_preview_vod">点播配置 · %1$d 个站点 · %2$d 个直播项%3$s</string>
+    <string name="dialog_config_preview_vod">点播配置 · %1$d 个站点%2$s</string>
     <string name="dialog_config_preview_live">直播配置 · %1$d 个入口</string>
     <string name="dialog_config_preview_wall">壁纸配置</string>
     <string name="dialog_config_preview_depot">配置仓库 · %1$d 个入口</string>

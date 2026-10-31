@@ -110,7 +110,7 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, B
         mBinding.background.setOnClickListener(this::onBackground);
         mBinding.audioDecode.setOnClickListener(this::setAudioDecode);
         mBinding.videoDecode.setOnClickListener(this::setVideoDecode);
-        mBinding.decodeSetting.setOnClickListener(view -> ((com.fongmi.android.tv.ui.activity.HomeActivity) requireActivity()).change(5));
+        mBinding.decodeSetting.setOnClickListener(view -> ((com.fongmi.android.tv.ui.activity.HomeActivity) requireActivity()).change(4));
         mBinding.performance.setOnClickListener(view -> onPerformance());
     }
 

@@ -2,7 +2,6 @@ package com.fongmi.android.tv.ui.activity;
 
 import android.app.Activity;
 
-import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.bean.Config;
@@ -14,10 +13,6 @@ public class VodActivityRouter {
 
     public static void loadVod(Activity activity, Config config) {
         VodConfig.load(config, callback(activity));
-    }
-
-    public static void loadLive(Activity activity, Config config) {
-        LiveConfig.load(config, callback(activity));
     }
 
     public static void loadWall(Activity activity, Config config) {

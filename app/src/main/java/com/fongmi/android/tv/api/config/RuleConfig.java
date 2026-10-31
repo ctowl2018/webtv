@@ -31,10 +31,8 @@ public class RuleConfig {
 
     private void merge() {
         List<String> ads = new ArrayList<>(VodConfig.get().getAds());
-        ads.addAll(LiveConfig.get().getAds());
         this.ads = ads;
         List<Rule> rules = new ArrayList<>(VodConfig.get().getRules());
-        rules.addAll(LiveConfig.get().getRules());
         this.rules = rules;
         dirty = false;
     }

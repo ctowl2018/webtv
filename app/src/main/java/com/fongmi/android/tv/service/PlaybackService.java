@@ -242,9 +242,6 @@ public class PlaybackService extends MediaLibraryService implements MediaLibrary
         if (event.isVod()) {
             BrowseTree.clearVod();
             session.notifyChildrenChanged("VOD", 0, null);
-        } else if (event.isLive()) {
-            BrowseTree.clearLive();
-            session.notifyChildrenChanged("LIVE", 0, null);
         }
     }
 

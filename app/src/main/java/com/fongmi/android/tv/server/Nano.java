@@ -1,6 +1,5 @@
 package com.fongmi.android.tv.server;
 
-import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.bean.Device;
 import com.fongmi.android.tv.server.impl.Process;
 import com.fongmi.android.tv.server.process.Action;
@@ -81,7 +80,6 @@ public class Nano extends NanoHTTPD {
         if (session.getMethod() == Method.POST) parse(session, files);
         SpiderDebug.log("server", "%s %s keys=%s", session.getMethod(), url, session.getParms().keySet());
         if (!ServerAuth.allow(session, url)) return error(Response.Status.UNAUTHORIZED, "Unauthorized");
-        if (url.startsWith("/tvbus")) return ok(LiveConfig.getResp());
         if (url.startsWith("/device")) return ServerAuth.isLocalOrLan(session) ? ok(deviceInfo()) : error(Response.Status.UNAUTHORIZED, "Unauthorized");
         for (Process process : process) if (process.isRequest(session, url)) return process.doResponse(session, url, files);
         return getAssets(url.substring(1));

@@ -10,7 +10,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.bean.Config;
@@ -46,7 +45,7 @@ public class ConfigCenterActivity extends BaseActivity implements ConfigAdapter.
     @Override
     protected void initView(Bundle savedInstanceState) {
         type = getIntent().getIntExtra("type", 0);
-        setTitle(type == 0 ? R.string.config_center_vod : type == 1 ? R.string.config_center_live : R.string.config_center_wall);
+        setTitle(type == 0 ? R.string.config_center_vod : R.string.config_center_wall);
         binding.recycler.setHasFixedSize(true);
         binding.recycler.setItemAnimator(null);
         binding.recycler.setLayoutManager(new LinearLayoutManager(this));
@@ -85,7 +84,6 @@ public class ConfigCenterActivity extends BaseActivity implements ConfigAdapter.
             }
         };
         if (type == 0) VodConfig.load(config, callback);
-        else if (type == 1) LiveConfig.load(config, callback);
         else WallConfig.load(config, callback);
     }
 

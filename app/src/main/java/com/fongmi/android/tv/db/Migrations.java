@@ -81,4 +81,14 @@ public class Migrations {
             database.execSQL("CREATE INDEX IF NOT EXISTS `index_History_createTime` ON `History` (`createTime`)");
         }
     };
+
+    public static final Migration MIGRATION_38_39 = new Migration(38, 39) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("DROP TABLE IF EXISTS Live");
+            database.execSQL("DROP TABLE IF EXISTS EpgReminderRecord");
+            // Keep rows of type=1 belong to the removed live channels; only type=0 (VOD) stays.
+            database.execSQL("DELETE FROM Keep WHERE type = 1");
+        }
+    };
 }

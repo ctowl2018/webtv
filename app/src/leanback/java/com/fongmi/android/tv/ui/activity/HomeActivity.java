@@ -13,7 +13,6 @@ import android.view.ViewTreeObserver;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentStatePagerAdapter;
@@ -31,7 +30,6 @@ import androidx.viewpager.widget.ViewPager;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.bean.Cache;
@@ -43,7 +41,6 @@ import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Style;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.ActivityHomeBinding;
-import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.db.BackupManager;
 import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.ConfigEvent;
@@ -52,7 +49,6 @@ import com.fongmi.android.tv.event.ServerEvent;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.player.Source;
-import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.service.DLNARendererService;
 import com.fongmi.android.tv.service.PlaybackService;
@@ -71,7 +67,6 @@ import com.fongmi.android.tv.ui.presenter.HistoryPresenter;
 import com.fongmi.android.tv.ui.presenter.ProgressPresenter;
 import com.fongmi.android.tv.ui.presenter.VodPresenter;
 import com.fongmi.android.tv.utils.Clock;
-import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.KeyUtil;
 import com.fongmi.android.tv.utils.LocalNetworkPermission;
@@ -79,9 +74,7 @@ import com.fongmi.android.tv.utils.NsdDeviceDiscovery;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.ResUtil;
-import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.crawler.SpiderDebug;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.github.catvod.net.OkHttp;
 import com.google.common.collect.Lists;
 
@@ -398,11 +391,7 @@ public class HomeActivity extends BaseActivity implements CustomLogoBar.Listener
     }
 
     private void checkType(Intent intent) {
-        if ("text/plain".equals(intent.getType()) || UrlUtil.path(intent.getData()).endsWith(".m3u")) {
-            loadLive("file:/" + FileChooser.getPathFromUri(intent.getData()));
-        } else {
-            VideoActivity.push(this, intent.getData().toString());
-        }
+        VideoActivity.push(this, intent.getData().toString());
     }
 
     @SuppressLint("RestrictedApi")
@@ -461,7 +450,6 @@ public class HomeActivity extends BaseActivity implements CustomLogoBar.Listener
     private void initConfig() {
         SpiderDebug.log("startup", "config load start cost=%sms", System.currentTimeMillis() - App.time());
         VodConfig.get().init().load(getCallback());
-        LiveConfig.get().init().load();
         WallConfig.get().init();
     }
 
@@ -494,14 +482,6 @@ public class HomeActivity extends BaseActivity implements CustomLogoBar.Listener
         SpiderDebug.log("startup", "home showContent end cost=%sms", System.currentTimeMillis() - App.time());
     }
 
-    private void loadLive(String url) {
-        LiveConfig.load(Config.find(url, 1), new Callback() {
-            @Override
-            public void success() {
-                LiveActivity.start(getActivity());
-            }
-        });
-    }
 
     private void setFocus() {
         setFocus(0);
@@ -652,9 +632,6 @@ public class HomeActivity extends BaseActivity implements CustomLogoBar.Listener
                 RefreshEvent.history();
                 RefreshEvent.home();
                 setLogo();
-                break;
-            case BOOT:
-                LiveActivity.start(this);
                 break;
         }
     }
@@ -1012,7 +989,6 @@ public class HomeActivity extends BaseActivity implements CustomLogoBar.Listener
     @Override
     protected void onDestroy() {
         DLNARendererService.stop(this);
-        LiveConfig.get().clear();
         VodConfig.get().clear();
         BackupManager.backup();
         OkHttp.get().clear();

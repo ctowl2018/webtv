@@ -28,11 +28,6 @@ public class HistoryDialog extends BaseAlertDialog implements ConfigAdapter.OnCl
         return this;
     }
 
-    public HistoryDialog live() {
-        type = 1;
-        return this;
-    }
-
     public HistoryDialog wall() {
         type = 2;
         return this;
@@ -60,7 +55,7 @@ public class HistoryDialog extends BaseAlertDialog implements ConfigAdapter.OnCl
 
     @Override
     protected MaterialAlertDialogBuilder getBuilder() {
-        return builder().setTitle(type == 0 ? R.string.config_center_vod : type == 1 ? R.string.config_center_live : R.string.config_center_wall).setView(getBinding().getRoot());
+        return builder().setTitle(type == 0 ? R.string.config_center_vod : R.string.config_center_wall).setView(getBinding().getRoot());
     }
 
     @Override

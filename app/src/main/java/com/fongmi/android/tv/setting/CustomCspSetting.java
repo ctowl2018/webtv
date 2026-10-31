@@ -5,7 +5,6 @@ import android.text.TextUtils;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Style;
 import com.fongmi.android.tv.gson.ExtAdapter;
@@ -31,7 +30,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 public class CustomCspSetting {
 
@@ -41,10 +39,9 @@ public class CustomCspSetting {
     private static final int MAX_INSERT_INDEX = 9;
     private static final String KIND_WEB_HOME = "webHome";
     private static final String KIND_CSP = "csp";
-    private static final String KIND_LIVE = "live";
     private static final String API_BUILTIN = "csp_Builtin";
-    private static final Pattern PYTHON_LIVE_METHOD = Pattern.compile("(?m)^\\s*def\\s+liveContent\\s*\\(");
-    private static final Pattern JS_LIVE_METHOD = Pattern.compile("(?m)(?:^|[,{;]\\s*)(?:async\\s+)?liveContent\\s*(?:[:=]\\s*(?:async\\s*)?(?:function\\s*)?|\\()", Pattern.CASE_INSENSITIVE);
+    //旧版本遗留的直播模式标识，仅用于迁移降级识别
+    private static final String KIND_LEGACY_LIVE = "live";
 
     public static Registry load() {
         String text = Path.read(registryFile());
@@ -83,42 +80,24 @@ public class CustomCspSetting {
 
     private static List<Item> itemsFrom(JsonObject object) {
         List<Item> items = new ArrayList<>();
-        if (object.has("sites") && object.get("sites").isJsonArray()) items.addAll(itemsFrom(object.getAsJsonArray("sites"), false));
-        if (object.has("lives") && object.get("lives").isJsonArray()) items.addAll(itemsFrom(object.getAsJsonArray("lives"), true));
-        if (items.isEmpty()) items.add(itemFrom(object, isLiveObject(object)));
+        if (object.has("sites") && object.get("sites").isJsonArray()) items.addAll(itemsFrom(object.getAsJsonArray("sites")));
+        if (items.isEmpty()) items.add(itemFrom(object));
         return items;
     }
 
     private static List<Item> itemsFrom(JsonArray array) {
-        return itemsFrom(array, null);
-    }
-
-    private static List<Item> itemsFrom(JsonArray array, Boolean live) {
         List<Item> items = new ArrayList<>();
         for (JsonElement element : array) {
             if (!element.isJsonObject()) continue;
-            JsonObject object = element.getAsJsonObject();
-            items.add(itemFrom(object, live == null ? isLiveObject(object) : live));
+            items.add(itemFrom(element.getAsJsonObject()));
         }
         return items;
     }
 
-    private static Item itemFrom(JsonObject object, boolean live) {
+    private static Item itemFrom(JsonObject object) {
         Item item = App.gson().fromJson(object, Item.class);
-        if (live) {
-            item.setKind(KIND_LIVE);
-            if (!object.has("live")) item.setLive(object.deepCopy());
-        } else if (!object.has("site")) {
-            item.setSite(object.deepCopy());
-        }
+        if (!object.has("site")) item.setSite(object.deepCopy());
         return item.normalize();
-    }
-
-    private static boolean isLiveObject(JsonObject object) {
-        if (object.has("kind") && object.get("kind").isJsonPrimitive()) return KIND_LIVE.equals(object.get("kind").getAsString());
-        if (object.has("live") && object.get("live").isJsonObject()) return true;
-        if (object.has("site") || object.has("key")) return false;
-        return object.has("url") || object.has("groups") || object.has("epg");
     }
 
     public static void save(Registry registry) {
@@ -204,20 +183,6 @@ public class CustomCspSetting {
         }
     }
 
-    public static boolean hasLiveMethod(String api, String script) {
-        if (TextUtils.isEmpty(api) || TextUtils.isEmpty(script)) return false;
-        String path;
-        try {
-            path = Uri.parse(api.trim()).getPath();
-        } catch (Exception e) {
-            path = api;
-        }
-        String lower = TextUtils.isEmpty(path) ? api.toLowerCase(Locale.ROOT) : path.toLowerCase(Locale.ROOT);
-        if (lower.endsWith(".py")) return PYTHON_LIVE_METHOD.matcher(script).find();
-        if (lower.endsWith(".js")) return JS_LIVE_METHOD.matcher(script).find();
-        return false;
-    }
-
     public static void writePage(String id, String code) {
         ensureFileAccess();
         File file = file(id, "index.html");
@@ -234,7 +199,6 @@ public class CustomCspSetting {
     }
 
     public static String copyFile(File source, String id) {
-        ensureFileAccess();
         if (source == null || !source.isFile()) throw new IllegalStateException(App.get().getString(R.string.setting_custom_csp_save_failed, ""));
         File file = file(id, source.getName());
         try {
@@ -296,21 +260,6 @@ public class CustomCspSetting {
         return new Result(home);
     }
 
-    public static void inject(List<Live> lives, String spider) {
-        Registry registry = load();
-        if (!registry.isEnabled()) return;
-        List<Live> items = registry.lives(spider);
-        if (items.isEmpty()) return;
-        for (Live live : items) lives.remove(live);
-        int index = Math.max(0, Math.min(registry.getInsertIndex(), lives.size()));
-        lives.addAll(index, items);
-    }
-
-    public static boolean hasLives() {
-        Registry registry = load();
-        return registry.isEnabled() && registry.getItems().stream().anyMatch(item -> item.isEnabled() && item.isLive() && item.isValid());
-    }
-
     public static int countEnabled() {
         return count().active();
     }
@@ -339,16 +288,6 @@ public class CustomCspSetting {
         item.setKind(KIND_CSP);
         item.setType(3);
         item.setApi("");
-        return item;
-    }
-
-    public static Item createDefaultLiveItem() {
-        Item item = new Item();
-        item.setId("live_" + System.currentTimeMillis() + "_" + Long.toHexString(System.nanoTime()));
-        item.setKind(KIND_LIVE);
-        item.setType(0);
-        item.setPlayerType(2);
-        item.setUa("okhttp");
         return item;
     }
 
@@ -386,7 +325,7 @@ public class CustomCspSetting {
             for (Item item : items) {
                 String oldKey = item.peekKey();
                 item.normalize();
-                item.disableLegacyWebHome();
+                item.disableLegacy();
                 item.ensureUniqueKey(keys);
                 if (!TextUtils.isEmpty(oldKey) && oldKey.equals(homeKey) && !oldKey.equals(item.getKey())) homeKey = item.getKey();
                 if (!ids.add(item.getId())) continue;
@@ -442,11 +381,7 @@ public class CustomCspSetting {
         }
 
         public List<Site> sites() {
-            return getItems().stream().filter(Item::isEnabled).filter(item -> !item.isLive()).filter(Item::isValid).map(Item::site).filter(site -> !site.isEmpty()).toList();
-        }
-
-        public List<Live> lives(String spider) {
-            return getItems().stream().filter(Item::isEnabled).filter(Item::isLive).filter(Item::isValid).map(item -> item.live(spider)).filter(live -> !live.isEmpty()).toList();
+            return getItems().stream().filter(Item::isEnabled).filter(Item::isValid).map(Item::site).filter(site -> !site.isEmpty()).toList();
         }
     }
 
@@ -466,8 +401,6 @@ public class CustomCspSetting {
         private Boolean webHome;
         @SerializedName("type")
         private Integer type;
-        @SerializedName("playerType")
-        private Integer playerType;
         @SerializedName("api")
         private String api;
         @SerializedName("ext")
@@ -483,22 +416,6 @@ public class CustomCspSetting {
         private String click;
         @SerializedName("playUrl")
         private String playUrl;
-        @SerializedName("url")
-        private String url;
-        @SerializedName("logo")
-        private String logo;
-        @SerializedName("epg")
-        private String epg;
-        @SerializedName("ua")
-        private String ua;
-        @SerializedName("origin")
-        private String origin;
-        @SerializedName("referer")
-        private String referer;
-        @SerializedName("timeZone")
-        private String timeZone;
-        @SerializedName("timeout")
-        private Integer timeout;
         @SerializedName("hide")
         private Integer hide;
         @SerializedName("searchable")
@@ -509,27 +426,24 @@ public class CustomCspSetting {
         private Integer quickSearch;
         @SerializedName("site")
         private JsonObject site;
-        @SerializedName("live")
-        private JsonObject live;
         private transient String extensionsText;
         private transient boolean extensionsInvalid;
         private transient Boolean extensionsExpanded;
 
         public Item normalize() {
             normalizeKind();
-            if (TextUtils.isEmpty(id)) id = Util.md5(getKey() + getName() + getApi() + getHomePage() + getUrl());
-            if (!isLive() && TextUtils.isEmpty(key)) {
+            if (TextUtils.isEmpty(id)) id = Util.md5(getKey() + getName() + getApi() + getHomePage());
+            if (TextUtils.isEmpty(key)) {
                 String siteKey = getSiteString("key");
                 key = TextUtils.isEmpty(siteKey) ? PREFIX + id : siteKey;
             }
-            if (!isLive() && shouldUseNameKey(key)) key = keyFromName(getName(), id);
+            if (shouldUseNameKey(key)) key = keyFromName(getName(), id);
             return this;
         }
 
         private void normalizeKind() {
             if (!TextUtils.isEmpty(kind)) return;
-            if (live != null) kind = KIND_LIVE;
-            else kind = inferWebHome() ? KIND_WEB_HOME : KIND_CSP;
+            kind = inferWebHome() ? KIND_WEB_HOME : KIND_CSP;
         }
 
         public boolean isEnabled() {
@@ -538,19 +452,18 @@ public class CustomCspSetting {
 
         public boolean isWebHome() {
             //WebHome 已从构建中移除：任何条目都不再按“网页首页”模式运行。
-            //历史条目的识别与降级见 isLegacyWebHome() / disableLegacyWebHome()。
+            //历史条目的识别与降级见 isLegacyWebHome() / disableLegacy()。
             return false;
         }
 
         //仅用于迁移：识别旧版本遗留的 WebHome 条目（kind=webHome / webHome=true / 内置 api + homePage）
         public boolean isLegacyWebHome() {
-            if (isLive()) return false;
             return KIND_WEB_HOME.equals(kind) || (webHome != null && webHome) || isWebHomeByFields();
         }
 
-        //把遗留 WebHome 条目降级为普通（禁用）条目，避免出现已不存在的模式与空 api 站点
-        void disableLegacyWebHome() {
-            if (!isLegacyWebHome()) return;
+        //把遗留的 WebHome / 直播 条目降级为普通（禁用）条目，避免出现已不存在的模式与空 api 站点
+        void disableLegacy() {
+            if (!KIND_LEGACY_LIVE.equals(kind) && !isLegacyWebHome()) return;
             enabled = false;
             kind = KIND_CSP;
             webHome = false;
@@ -567,23 +480,13 @@ public class CustomCspSetting {
             return !homeValue.isEmpty() && isBuiltinApi(apiValue);
         }
 
-        public boolean isLive() {
-            normalizeKind();
-            return KIND_LIVE.equals(kind);
-        }
-
         public String getKind() {
             normalizeKind();
-            return isLive() ? KIND_LIVE : KIND_CSP;
+            return KIND_CSP;
         }
 
         public boolean isValid() {
-            if (isLive()) return !getName().isEmpty() && (!getUrl().isEmpty() || hasLiveGroups());
             return isWebHome() ? !getHomePage().isEmpty() : !getApi().isEmpty();
-        }
-
-        public String getDefaultName() {
-            return isLive() ? "直播" : isWebHome() ? "WebHome" : "通用 CSP";
         }
 
         public void setEnabled(boolean enabled) {
@@ -596,40 +499,11 @@ public class CustomCspSetting {
         }
 
         public void setKind(String kind) {
-            boolean wasLive = isLive();
-            this.kind = KIND_LIVE.equals(kind) ? KIND_LIVE : KIND_WEB_HOME.equals(kind) ? KIND_WEB_HOME : KIND_CSP;
+            this.kind = KIND_WEB_HOME.equals(kind) ? KIND_WEB_HOME : KIND_CSP;
             this.webHome = KIND_WEB_HOME.equals(this.kind);
-            if (KIND_LIVE.equals(this.kind) && live == null) live = new JsonObject();
-            if (KIND_LIVE.equals(this.kind)) {
-                key = null;
-                if (!wasLive) {
-                    if (type == null) type = 0;
-                    if (playerType == null) playerType = 2;
-                    if (TextUtils.isEmpty(ua)) ua = "okhttp";
-                }
-                homePage = null;
-                playUrl = null;
-                hide = null;
-                searchable = null;
-                changeable = null;
-                quickSearch = null;
-                site = null;
-            } else {
-                live = null;
-                if (wasLive) type = null;
-                url = null;
-                logo = null;
-                epg = null;
-                ua = null;
-                playerType = null;
-                origin = null;
-                referer = null;
-                timeZone = null;
-                timeout = null;
-                if (isWebHome()) {
-                    if (type == null) type = 3;
-                    if (TextUtils.isEmpty(api) || isBuiltinApi(api)) api = API_BUILTIN;
-                }
+            if (isWebHome()) {
+                if (type == null) type = 3;
+                if (TextUtils.isEmpty(api) || isBuiltinApi(api)) api = API_BUILTIN;
             }
         }
 
@@ -649,29 +523,17 @@ public class CustomCspSetting {
 
         public void setName(String name) {
             this.name = name;
-            if (!isLive() && shouldUseNameKey(getKey())) setKey(keyFromName(getName(), getId()));
-            if (isLive()) putLive("name", name);
-            else putSite("name", name);
+            if (shouldUseNameKey(getKey())) setKey(keyFromName(getName(), getId()));
+            putSite("name", name);
         }
 
         public void setType(Integer type) {
             this.type = type;
-            if (isLive()) putLive("type", type);
-            else putSite("type", type);
+            putSite("type", type);
         }
 
         public Integer getType() {
-            return type == null ? isLive() ? getLiveInt("type", 0) : getSiteInt("type", 3) : type;
-        }
-
-        public void setPlayerType(Integer playerType) {
-            this.playerType = playerType;
-            if (playerType == null) removeLive("playerType");
-            else putLive("playerType", playerType);
-        }
-
-        public Integer getPlayerType() {
-            return playerType == null ? getLiveInt("playerType", null) : playerType;
+            return type == null ? getSiteInt("type", 3) : type;
         }
 
         public Integer getHide() {
@@ -692,20 +554,17 @@ public class CustomCspSetting {
 
         public void setApi(String api) {
             this.api = api;
-            if (isLive()) putLive("api", api);
-            else putSite("api", api);
+            putSite("api", api);
         }
 
         public void setExt(String ext) {
             this.ext = ext;
-            if (isLive()) putLive("ext", ext);
-            else putSite("ext", ext);
+            putSite("ext", ext);
         }
 
         public void setJar(String jar) {
             this.jar = jar;
-            if (isLive()) putLive("jar", jar);
-            else putSite("jar", jar);
+            putSite("jar", jar);
         }
 
         public void setHomePage(String homePage) {
@@ -736,54 +595,12 @@ public class CustomCspSetting {
 
         public void setClick(String click) {
             this.click = click;
-            if (isLive()) putLive("click", click);
-            else putSite("click", click);
+            putSite("click", click);
         }
 
         public void setPlayUrl(String playUrl) {
             this.playUrl = playUrl;
             putSite("playUrl", playUrl);
-        }
-
-        public void setUrl(String url) {
-            this.url = url;
-            putLive("url", url);
-        }
-
-        public void setLogo(String logo) {
-            this.logo = logo;
-            putLive("logo", logo);
-        }
-
-        public void setEpg(String epg) {
-            this.epg = epg;
-            putLive("epg", epg);
-        }
-
-        public void setUa(String ua) {
-            this.ua = ua;
-            putLive("ua", ua);
-        }
-
-        public void setOrigin(String origin) {
-            this.origin = origin;
-            putLive("origin", origin);
-        }
-
-        public void setReferer(String referer) {
-            this.referer = referer;
-            putLive("referer", referer);
-        }
-
-        public void setTimeZone(String timeZone) {
-            this.timeZone = timeZone;
-            putLive("timeZone", timeZone);
-        }
-
-        public void setTimeout(Integer timeout) {
-            this.timeout = timeout;
-            if (timeout == null) removeLive("timeout");
-            else putLive("timeout", timeout);
         }
 
         public void setHide(Integer hide) {
@@ -810,29 +627,25 @@ public class CustomCspSetting {
             this.site = site;
         }
 
-        public void setLive(JsonObject live) {
-            this.live = live;
-        }
-
         public String getKey() {
             return !TextUtils.isEmpty(key) ? key.trim() : getSiteString("key");
         }
 
         public String getName() {
-            String value = !TextUtils.isEmpty(name) ? name.trim() : isLive() ? getLiveString("name") : getSiteString("name");
+            String value = !TextUtils.isEmpty(name) ? name.trim() : getSiteString("name");
             return TextUtils.isEmpty(value) ? getKey() : value;
         }
 
         public String getApi() {
-            return !TextUtils.isEmpty(api) ? api.trim() : isLive() ? getLiveString("api") : getSiteString("api");
+            return !TextUtils.isEmpty(api) ? api.trim() : getSiteString("api");
         }
 
         public String getExt() {
-            return !TextUtils.isEmpty(ext) ? ext.trim() : isLive() ? getLiveString("ext") : getSiteString("ext");
+            return !TextUtils.isEmpty(ext) ? ext.trim() : getSiteString("ext");
         }
 
         public String getJar() {
-            return !TextUtils.isEmpty(jar) ? jar.trim() : isLive() ? getLiveString("jar") : getSiteString("jar");
+            return !TextUtils.isEmpty(jar) ? jar.trim() : getSiteString("jar");
         }
 
         public String getHomePage() {
@@ -857,47 +670,14 @@ public class CustomCspSetting {
         }
 
         public String getClick() {
-            return !TextUtils.isEmpty(click) ? click.trim() : isLive() ? getLiveString("click") : getSiteString("click");
+            return !TextUtils.isEmpty(click) ? click.trim() : getSiteString("click");
         }
 
         public String getPlayUrl() {
             return !TextUtils.isEmpty(playUrl) ? playUrl.trim() : getSiteString("playUrl");
         }
 
-        public String getUrl() {
-            return !TextUtils.isEmpty(url) ? url.trim() : getLiveString("url");
-        }
-
-        public String getLogo() {
-            return !TextUtils.isEmpty(logo) ? logo.trim() : getLiveString("logo");
-        }
-
-        public String getEpg() {
-            return !TextUtils.isEmpty(epg) ? epg.trim() : getLiveString("epg");
-        }
-
-        public String getUa() {
-            return !TextUtils.isEmpty(ua) ? ua.trim() : getLiveString("ua");
-        }
-
-        public String getOrigin() {
-            return !TextUtils.isEmpty(origin) ? origin.trim() : getLiveString("origin");
-        }
-
-        public String getReferer() {
-            return !TextUtils.isEmpty(referer) ? referer.trim() : getLiveString("referer");
-        }
-
-        public String getTimeZone() {
-            return !TextUtils.isEmpty(timeZone) ? timeZone.trim() : getLiveString("timeZone");
-        }
-
-        public Integer getTimeout() {
-            return timeout == null ? getLiveInt("timeout", null) : timeout;
-        }
-
         public Site site() {
-            if (isLive()) return new Site();
             normalize();
             if (site != null) return siteFromJson();
             Site site = new Site();
@@ -918,32 +698,6 @@ public class CustomCspSetting {
             if (webHomeOnly && getExtensions() != null) site.setExtensions(getExtensions().deepCopy());
             site.setStyle(Style.rect());
             return site;
-        }
-
-        public Live live(String spider) {
-            normalize();
-            return Live.objectFrom(liveObject(), spider);
-        }
-
-        private JsonObject liveObject() {
-            JsonObject object = live == null ? new JsonObject() : live.deepCopy();
-            if (!TextUtils.isEmpty(name)) object.addProperty("name", name.trim());
-            else if (!object.has("name")) object.addProperty("name", getName());
-            if (type != null) object.addProperty("type", type);
-            if (playerType != null) object.addProperty("playerType", playerType);
-            if (!TextUtils.isEmpty(url)) object.addProperty("url", url.trim());
-            if (!TextUtils.isEmpty(api)) object.addProperty("api", api.trim());
-            if (!TextUtils.isEmpty(ext)) object.addProperty("ext", ext.trim());
-            if (!TextUtils.isEmpty(jar)) object.addProperty("jar", jar.trim());
-            if (!TextUtils.isEmpty(click)) object.addProperty("click", click.trim());
-            if (!TextUtils.isEmpty(logo)) object.addProperty("logo", logo.trim());
-            if (!TextUtils.isEmpty(epg)) object.addProperty("epg", epg.trim());
-            if (!TextUtils.isEmpty(ua)) object.addProperty("ua", ua.trim());
-            if (!TextUtils.isEmpty(origin)) object.addProperty("origin", origin.trim());
-            if (!TextUtils.isEmpty(referer)) object.addProperty("referer", referer.trim());
-            if (!TextUtils.isEmpty(timeZone)) object.addProperty("timeZone", timeZone.trim());
-            if (timeout != null) object.addProperty("timeout", timeout);
-            return object;
         }
 
         private Site siteFromJson() {
@@ -998,10 +752,6 @@ public class CustomCspSetting {
             return site.get("webHome").getAsString().trim();
         }
 
-        private String getLiveString(String key) {
-            return getString(live, key);
-        }
-
         private JsonElement getExtensions() {
             if (extensions != null) return extensions;
             if (site == null || !site.has("extensions")) return null;
@@ -1040,19 +790,6 @@ public class CustomCspSetting {
             }
         }
 
-        private Integer getLiveInt(String key, Integer fallback) {
-            try {
-                if (live == null || !live.has(key) || !live.get(key).isJsonPrimitive()) return fallback;
-                return live.get(key).getAsInt();
-            } catch (Exception e) {
-                return fallback;
-            }
-        }
-
-        private boolean hasLiveGroups() {
-            return live != null && live.has("groups") && live.get("groups").isJsonArray() && !live.getAsJsonArray("groups").isEmpty();
-        }
-
         private String peekKey() {
             if (!TextUtils.isEmpty(key)) return key.trim();
             if (site == null || !site.has("key") || !site.get("key").isJsonPrimitive()) return "";
@@ -1060,7 +797,6 @@ public class CustomCspSetting {
         }
 
         private void ensureUniqueKey(Set<String> keys) {
-            if (isLive()) return;
             String base = getKey();
             String key = base;
             int index = 2;
@@ -1114,23 +850,6 @@ public class CustomCspSetting {
 
         private void removeSite(String key) {
             if (site != null) site.remove(key);
-        }
-
-        private void putLive(String key, String value) {
-            if (live == null) return;
-            if (TextUtils.isEmpty(value)) {
-                removeLive(key);
-                return;
-            }
-            live.addProperty(key, value);
-        }
-
-        private void putLive(String key, Integer value) {
-            if (live != null && value != null) live.addProperty(key, value);
-        }
-
-        private void removeLive(String key) {
-            if (live != null) live.remove(key);
         }
     }
 }

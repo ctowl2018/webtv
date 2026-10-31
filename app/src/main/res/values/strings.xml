@@ -505,7 +505,7 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="dialog_select_title">Select chapter</string>
     <string name="dialog_config_hint">Please enter the config…</string>
     <string name="dialog_config_name">Please enter the name…</string>
-    <string name="dialog_config_preview_vod">VOD config · %1$d sites · %2$d live items%3$s</string>
+    <string name="dialog_config_preview_vod">VOD config · %1$d sites%2$s</string>
     <string name="dialog_config_preview_live">Live config · %1$d entries</string>
     <string name="dialog_config_preview_wall">Wallpaper config</string>
     <string name="dialog_config_preview_depot">Config repository · %1$d entries</string>

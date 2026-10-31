@@ -25,7 +25,6 @@ import com.fongmi.android.tv.utils.NsdDeviceDiscovery;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.Tip;
 import com.fongmi.android.tv.utils.PreviousProcessExitLogger;
-import com.fongmi.android.tv.utils.EpgReminder;
 import com.fongmi.hook.Hook;
 import com.github.catvod.crawler.DebugLogStore;
 import com.github.catvod.crawler.SpiderDebug;
@@ -110,7 +109,6 @@ public class App extends Application implements Application.ActivityLifecycleCal
             PreviousProcessExitLogger.log(this);
         }
         Notify.createChannel();
-        EpgReminder.createChannel();
         ProxySetting.apply();
         registerActivityLifecycleCallbacks(this);
         post(this::startBackgroundServices, 1200);
@@ -121,7 +119,6 @@ public class App extends Application implements Application.ActivityLifecycleCal
         Server.get().start();
         History.cleanExpired();
         if (LocalNetworkPermission.isGranted(this)) NsdDeviceDiscovery.register();
-        EpgReminder.rebuildFromStorage();
         PlaybackRemoteSyncer.start();
         if (RemoteStore.get().enabled && !RemoteStore.get().serverUrl.isEmpty()) RemoteAgent.get().start();
         SpiderDebug.log("startup", "background services ready cost=%sms", System.currentTimeMillis() - time);

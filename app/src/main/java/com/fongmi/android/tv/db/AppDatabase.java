@@ -10,18 +10,14 @@ import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.bean.Backup;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Device;
-import com.fongmi.android.tv.bean.EpgReminderRecord;
 import com.fongmi.android.tv.bean.History;
 import com.fongmi.android.tv.bean.Keep;
-import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.db.dao.ConfigDao;
 import com.fongmi.android.tv.db.dao.DeviceDao;
-import com.fongmi.android.tv.db.dao.EpgReminderDao;
 import com.fongmi.android.tv.db.dao.HistoryDao;
 import com.fongmi.android.tv.db.dao.KeepDao;
-import com.fongmi.android.tv.db.dao.LiveDao;
 import com.fongmi.android.tv.db.dao.SiteDao;
 import com.fongmi.android.tv.db.dao.TrackDao;
 import com.fongmi.android.tv.utils.FileUtil;
@@ -39,10 +35,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-@Database(entities = {Keep.class, Site.class, Live.class, Track.class, Config.class, Device.class, History.class, EpgReminderRecord.class}, version = AppDatabase.VERSION)
+@Database(entities = {Keep.class, Site.class, Track.class, Config.class, Device.class, History.class}, version = AppDatabase.VERSION)
 public abstract class AppDatabase extends RoomDatabase {
 
-    public static final int VERSION = 38;
+    public static final int VERSION = 39;
     public static final String NAME = "tv";
     public static final String SYMBOL = "@@@";
 
@@ -147,6 +143,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 .addMigrations(Migrations.MIGRATION_35_36)
                 .addMigrations(Migrations.MIGRATION_36_37)
                 .addMigrations(Migrations.MIGRATION_37_38)
+                .addMigrations(Migrations.MIGRATION_38_39)
                 .setQueryExecutor(Task.executor())
                 .setTransactionExecutor(Task.largeExecutor())
                 .allowMainThreadQueries().build();
@@ -156,8 +153,6 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract SiteDao getSiteDao();
 
-    public abstract LiveDao getLiveDao();
-
     public abstract TrackDao getTrackDao();
 
     public abstract ConfigDao getConfigDao();
@@ -165,6 +160,4 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract DeviceDao getDeviceDao();
 
     public abstract HistoryDao getHistoryDao();
-
-    public abstract EpgReminderDao getEpgReminderDao();
 }
