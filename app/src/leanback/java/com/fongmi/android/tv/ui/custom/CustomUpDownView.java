@@ -6,6 +6,7 @@ import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
+import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,6 +18,11 @@ public class CustomUpDownView extends MaterialTextView {
 
     private UpListener upListener;
     private DownListener downListener;
+    private ConsumeListener consumeListener;
+    //当前这次按下还没松手的方向键（0 表示没有待处理的按下）
+    private int pendingKey;
+    //本次按下是否已经进入长按连发
+    private boolean adjusting;
 
     public CustomUpDownView(@NonNull Context context) {
         super(context);
@@ -34,17 +40,77 @@ public class CustomUpDownView extends MaterialTextView {
         this.downListener = downListener;
     }
 
+    /**
+     * 按键被本控件消费时回调。
+     * 视图层一旦消费了按键，Activity 的 dispatchKeyEvent 就收不到，
+     * 控制条「重置自动隐藏计时 / 记住当前焦点」这两件事需要在这里补上。
+     */
+    public void setConsumeListener(ConsumeListener consumeListener) {
+        this.consumeListener = consumeListener;
+    }
+
     private boolean hasEvent(KeyEvent event) {
-        // Consume only key repeats (held key = continuous adjustment). A short press falls
-        // through to the default focus search: previously every up/down press was swallowed,
-        // so focus could never leave this row vertically with the D-pad.
-        return event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() > 0 && ((upListener != null && KeyUtil.isUpKey(event)) || (downListener != null && KeyUtil.isDownKey(event)));
+        //只有绑定了上下监听的方向键才走这里的逻辑
+        return (upListener != null && KeyUtil.isUpKey(event)) || (downListener != null && KeyUtil.isDownKey(event));
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (hasEvent(event)) return onKeyDown(event);
-        else return super.dispatchKeyEvent(event);
+        if (!hasEvent(event)) return super.dispatchKeyEvent(event);
+        if (KeyUtil.isActionDown(event)) {
+            if (event.getRepeatCount() == 0) {
+                //首次按下先按住焦点不动：长按连发（调倍速/调片头片尾/开字幕设置）
+                //依赖焦点一直留在本控件才会继续收到重复事件。
+                //早先这一下直接放行，焦点当帧就被移走，后面的连发事件再也收不到。
+                pendingKey = event.getKeyCode();
+                adjusting = false;
+                //先照常走一遍默认分发：系统的键盘长按判定是在这一步建立的，
+                //整段吞掉的话长按（倍速切换 / 片头片尾复位）就再也触发不了。
+                super.dispatchKeyEvent(event);
+                notifyConsumed();
+                return true;
+            }
+            //长按连发：执行调整
+            adjusting = true;
+            notifyConsumed();
+            return onKeyDown(event);
+        }
+        //松手：短按才把焦点交出去，长按调整完则停在原地
+        if (pendingKey == 0) return super.dispatchKeyEvent(event);
+        int key = pendingKey;
+        boolean wasAdjusting = adjusting;
+        pendingKey = 0;
+        adjusting = false;
+        //松手的方向和按下时对不上（中途焦点被别处抢走），不要乱移焦
+        if (!wasAdjusting && event.getKeyCode() == key) moveFocus(key);
+        notifyConsumed();
+        return true;
+    }
+
+    /**
+     * 短按时把焦点交给相邻控件，方向取自 nextFocusUp / nextFocusDown。
+     * 目标取不到就留在原地：宁可焦点不动，也不要把它丢出控制条。
+     */
+    private void moveFocus(int key) {
+        int id;
+        if (key == KeyEvent.KEYCODE_DPAD_UP) id = getNextFocusUpId();
+        else if (key == KeyEvent.KEYCODE_DPAD_DOWN) id = getNextFocusDownId();
+        else return;
+        if (id == View.NO_ID) return;
+        View target = getRootView().findViewById(id);
+        if (target == null || !target.isFocusable() || target.getVisibility() != View.VISIBLE) return;
+        target.requestFocus();
+    }
+
+    private void notifyConsumed() {
+        if (consumeListener != null) consumeListener.onKeyConsumed();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        pendingKey = 0;
+        adjusting = false;
+        super.onDetachedFromWindow();
     }
 
     private boolean onKeyDown(KeyEvent event) {
@@ -85,7 +151,8 @@ public class CustomUpDownView extends MaterialTextView {
         Drawable[] drawables = getCompoundDrawablesRelative();
         if (drawables.length > 0 && drawables[0] != null) return drawables[0];
         drawables = getCompoundDrawables();
-        return drawables.length > 0 ? drawables[0] : null;
+        if (drawables.length > 0 && drawables[0] != null) return drawables[0];
+        return null;
     }
 
     public interface UpListener {
@@ -96,5 +163,10 @@ public class CustomUpDownView extends MaterialTextView {
     public interface DownListener {
 
         void onDown();
+    }
+
+    public interface ConsumeListener {
+
+        void onKeyConsumed();
     }
 }

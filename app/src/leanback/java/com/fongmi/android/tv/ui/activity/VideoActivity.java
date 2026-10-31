@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
 import android.view.KeyEvent;
@@ -22,6 +23,7 @@ import androidx.annotation.Nullable;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.widget.LinearLayoutCompat;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.leanback.widget.OnChildViewHolderSelectedListener;
 import androidx.leanback.widget.VerticalGridView;
@@ -89,6 +91,9 @@ import com.fongmi.android.tv.ui.custom.FlagSelectionListener;
 import com.fongmi.android.tv.ui.dialog.ContentDialog;
 import com.fongmi.android.tv.ui.dialog.ControlDialog;
 import com.fongmi.android.tv.ui.dialog.DanmakuDialog;
+import com.fongmi.android.tv.ui.dialog.BaseAlertDialog;
+import com.fongmi.android.tv.ui.dialog.BaseBottomSheetDialog;
+import com.fongmi.android.tv.ui.dialog.BaseSideSheetDialog;
 import com.fongmi.android.tv.ui.dialog.PlayerEngineDialog;
 import com.fongmi.android.tv.ui.dialog.QuickSearchDialog;
 import com.fongmi.android.tv.ui.dialog.SpeedSettingDialog;
@@ -162,6 +167,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private boolean blockCenterKeyUp;
     //确认键按下时焦点是否落在控制条内：松手时控制条若已被收走，这次松手不能落到播放器头上
     private boolean enterDownOnControlBar;
+    //弹窗（弹幕设置 / 字幕 / 音轨）打开期间控制条保持常驻，不再自动隐藏
+    private boolean mPanelHolding;
+    //最近一次检测到弹窗的时间，用来判断弹窗是否真的全部关闭
+    private long mPanelLastSeen;
     private Boolean mPlayPauseShown;
     //用户刚下发的播放/暂停意图，等 onIsPlayingChanged 回执确认后清空
     private Boolean mPlayPausePending;
@@ -461,6 +470,12 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.control.action.opening.setDownListener(this::onOpeningSub);
         mBinding.control.action.text.setUpListener(this::onSubtitleClick);
         mBinding.control.action.text.setDownListener(this::onSubtitleClick);
+        //方向键在视图层就被消费掉，Activity 收不到，这里补回调维持控制条状态
+        mBinding.control.action.text.setConsumeListener(this::onControlKeyConsumed);
+        mBinding.control.action.speedBtn.setConsumeListener(this::onControlKeyConsumed);
+        mBinding.control.action.opening.setConsumeListener(this::onControlKeyConsumed);
+        mBinding.control.action.ending.setConsumeListener(this::onControlKeyConsumed);
+        mBinding.control.action.speed.setConsumeListener(this::onControlKeyConsumed);
         //播放/暂停：同一个按钮按播放状态轮换图标（换图在 onPaused/onPlay 内部即时完成）
         mBinding.control.action.playPause.setOnClickListener(view -> togglePlayPause());
         mBinding.control.action.next.setOnClickListener(view -> checkNext());
@@ -548,27 +563,59 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     /**
      * 控制条的焦点链：进度条在上、按钮行在下（见 view_control_vod.xml）。
-     * 早期版本按钮行在上、进度条在下，view_control_seek.xml 里写的是「向上→按钮行」；
-     * 两者对调后这条写死的方向就反了，按上会把焦点送到下方的按钮行，按下则原地不动。
-     * 这里按当前顺序显式绑定，并且两端都不再环回（按钮行到底、进度条到顶都停在原控件上）。
+     *
+     * 上下两个方向统一写死，不依赖系统的几何搜索：
+     * · 上 = 回进度条（进度条在按钮行正上方）
+     * · 下 = 「播放/暂停」（按钮行第一个按钮，也是控制条呼出时的默认焦点）
+     *
+     * 之前只给 prev/next/danmaku/audio/panelBtn 补过绑定，而且下方向是「指向自己」，
+     * playPause / 字幕 / 倍速 / 片头 / 片尾 这几个则完全没绑。按「下」时框架找不到
+     * 显式目标，只能退化成几何搜索：控制条位于屏幕底部，下方没有可聚焦控件，
+     * 焦点就被甩出控制条（实测按「下」后按钮行上再无高亮块，遥控器像是失灵）。
      */
     private void bindControlFocus() {
         View timeBar = mBinding.control.seek.getFocusView();
         if (timeBar == null) return;
-        timeBar.setNextFocusUpId(timeBar.getId());
-        timeBar.setNextFocusDownId(R.id.prev);
-        timeBar.setNextFocusLeftId(timeBar.getId());
-        timeBar.setNextFocusRightId(timeBar.getId());
-        View[] icons = {mBinding.control.action.prev, mBinding.control.action.next, mBinding.control.action.danmaku, mBinding.control.action.audio, mBinding.control.action.panelBtn};
-        for (View view : icons) {
+        int timeBarId = timeBar.getId();
+        //进度条在控制条最上沿：向上停在自己身上，向下落到「播放/暂停」
+        timeBar.setNextFocusUpId(timeBarId);
+        timeBar.setNextFocusDownId(R.id.playPause);
+        timeBar.setNextFocusLeftId(timeBarId);
+        timeBar.setNextFocusRightId(timeBarId);
+        //按钮行全部可见可聚焦控件：向上回进度条，向下落到「播放/暂停」
+        View[] slots = {
+                mBinding.control.action.playPause,
+                mBinding.control.action.prev,
+                mBinding.control.action.next,
+                mBinding.control.action.danmaku,
+                mBinding.control.action.text,
+                mBinding.control.action.audio,
+                mBinding.control.action.speedBtn,
+                mBinding.control.action.panelBtn,
+                mBinding.control.action.opening,
+                mBinding.control.action.ending,
+        };
+        for (View view : slots) {
             if (view == null) continue;
-            view.setNextFocusUpId(timeBar.getId());
-            view.setNextFocusDownId(view.getId());
+            view.setNextFocusUpId(timeBarId);
+            view.setNextFocusDownId(R.id.playPause);
         }
         //水平方向取消首尾相接（原先 prev←more、more→prev 会绕整整一行）
         //按钮行末位现在是「跳过片尾」（片头/片尾被弹性留白推到最右端），右边界停在它身上
         mBinding.control.action.prev.setNextFocusLeftId(View.NO_ID);
         mBinding.control.action.ending.setNextFocusRightId(View.NO_ID);
+    }
+
+    /**
+     * CustomUpDownView（字幕 / 倍速 / 片头 / 片尾）会把方向键消费在视图层，
+     * Activity 的 dispatchKeyEvent 收不到，这里补上「重置自动隐藏计时 + 记住当前焦点」。
+     */
+    private void onControlKeyConsumed() {
+        if (isVisible(mBinding.control.getRoot())) {
+            setR1Callback();
+            View focus = getCurrentFocus();
+            if (isInControlBar(focus)) mFocus2 = focus;
+        }
     }
 
     private void setRecyclerView() {
@@ -1481,6 +1528,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void onTrack(View view) {
+        //面板打开期间控制条常驻，等面板关掉再恢复自动隐藏
+        holdControl();
         TrackDialog.create().type(Integer.parseInt(view.getTag().toString())).player(player()).show(this);
         hideControl();
     }
@@ -1504,6 +1553,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         View danmaku = mBinding.control.action.danmaku;
         mFocus2 = danmaku;
         mReturnFocus = danmaku;
+        //弹幕设置面板打开期间控制条常驻
+        holdControl();
         DanmakuDialog.create().player(player()).show(this);
         hideControl();
     }
@@ -1628,6 +1679,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void hideControl() {
+        //弹窗打开期间控制条常驻：等所有弹窗都关掉再恢复自动隐藏
+        if (mPanelHolding) return;
         if (mOsd != null) mOsd.setControlsVisible(false);
         //隐藏前先把焦点收回播放器：控件即将 GONE 时系统会清空窗口焦点，
         //再次呼出控制条就可能拿不到“上次停在哪个按钮”，表现为偶发焦点丢失。
@@ -1635,6 +1688,53 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.control.getRoot().setVisibility(View.GONE);
         if (player().isPlaying()) mBinding.widget.top.setVisibility(View.GONE);
         App.removeCallbacks(mR1);
+    }
+
+    /**
+     * 弹窗打开期间把控制条“挂起”：不隐藏、也不走自动隐藏倒计时。
+     * 用于弹幕设置面板、字幕设置、音轨选择这类「点了控制条按钮就弹出的面板」——
+     * 面板开着的时候控制条如果自己消失，面板关掉后画面会突然少了一截。
+     */
+    private void holdControl() {
+        mPanelHolding = true;
+        mPanelLastSeen = SystemClock.uptimeMillis();
+        App.removeCallbacks(mR1);
+        App.removeCallbacks(mPanelCheck);
+        App.post(mPanelCheck, 300);
+    }
+
+    /**
+     * 轮询弹窗是否已经全部关闭：全部关掉后解除挂起，控制条恢复超时自动隐藏。
+     * 「轨道面板 → 字幕设置」是串联打开的，中间有一小段没有弹窗的空档，
+     * 这里留一段宽限期，避免把串联切换误判成已经关闭。
+     */
+    private final Runnable mPanelCheck = new Runnable() {
+
+        @Override
+        public void run() {
+            if (!mPanelHolding) return;
+            if (hasPanel()) {
+                mPanelLastSeen = SystemClock.uptimeMillis();
+                App.post(this, 300);
+                return;
+            }
+            if (SystemClock.uptimeMillis() - mPanelLastSeen < 600) {
+                App.post(this, 300);
+                return;
+            }
+            mPanelHolding = false;
+            if (isVisible(mBinding.control.getRoot())) setR1Callback();
+        }
+    };
+
+    /** 当前是否还有我方弹窗（弹幕设置 / 字幕 / 音轨等）挂在界面上 */
+    private boolean hasPanel() {
+        for (Fragment fragment : getSupportFragmentManager().getFragments()) {
+            if (fragment instanceof BaseBottomSheetDialog) return true;
+            if (fragment instanceof BaseSideSheetDialog) return true;
+            if (fragment instanceof BaseAlertDialog) return true;
+        }
+        return false;
     }
 
     private void hideCenter() {
@@ -1929,6 +2029,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onSubtitleClick() {
+        //字幕设置面板打开期间控制条常驻
+        holdControl();
         SubtitleSettingDialog.create().view(mBinding.exo.getSubtitleView()).player(player()).show(this);
         App.post(this::hideControl, 100);
     }
@@ -2411,6 +2513,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         RefreshEvent.keep();
         App.removeCallbacks(mR1, mR2, mR3, mR4);
         App.removeCallbacks(mPlayPauseConfirm);
+        App.removeCallbacks(mPanelCheck);
         SiteHealthStore.flush();
         PlaybackEventCollector.get().setPlayer(null);
         PlaybackEventCollector.get().updateHistory(null);

@@ -203,7 +203,29 @@ public class CollectActivity extends BaseActivity implements CollectAdapter.OnCl
         mBinding.brand.brandTitle.setVisibility(View.VISIBLE);
         if (mSites.isEmpty()) return;
         mCollectAdapter.add(Collect.all());
+        focusCollectFirst();
         mViewModel.searchContent(mSites, getKeyword(), false);
+    }
+
+    /**
+     * 搜索结果页的初始焦点落在左侧站点列表的第一项（「全部」）上。
+     * Leanback 的 VerticalGridView 只是"容器聚焦"：选中项变了并不等于子项真的拿到了焦点，
+     * 这里先定位到第 0 项，再点名 itemView 请求焦点；布局尚未完成时下一帧再试一次。
+     */
+    private void focusCollectFirst() {
+        mBinding.collect.setSelectedPosition(0);
+        App.post(() -> {
+            View item = mBinding.collect.getChildAt(0);
+            if (item != null) {
+                item.requestFocus();
+                return;
+            }
+            //条目还没布局出来，等一帧再试
+            App.post(() -> {
+                View child = mBinding.collect.getChildAt(0);
+                if (child != null) child.requestFocus();
+            }, 80);
+        }, 60);
     }
 
     private int getCount() {
