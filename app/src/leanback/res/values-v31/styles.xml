@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      Android 12+ 用系统 SplashScreen 取代 windowBackground 生成启动窗口，
+      values/ 里的 Theme.Splash（layer-list 位图）在这一分支上完全不生效，
+      系统会退回 ROM 默认底色，与图标卡片色不一致，启动时会看到一次跳色。
+
+      这里显式接管：
+      - windowSplashScreenBackground 与图标卡片同色 #0C1219，切换时无跳色
+      - windowSplashScreenAnimatedIcon 放透明块：系统图标槽是方形的，放不下横向的
+        「图标 + 影视 Videos」；组合标改由 HomeActivity 的闪屏层绘制，与底色无缝衔接
+    -->
+    <style name="Theme.Splash" parent="Theme.Base">
+        <item name="android:windowBackground">@drawable/startup_window_background</item>
+        <item name="android:windowSplashScreenBackground">@color/startup_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_blank</item>
+    </style>
+
+</resources>

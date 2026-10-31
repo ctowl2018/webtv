@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  片尾（跳过片尾）：与 ic_control_opening 镜像——空心右向三角 + 右侧竖条。
+  比例与描边同 ic_control_opening（参考图实测：三角 38x52、竖条 6x70、描边 6，均为纯描边圆头）。
+  纯白，由 selector_control_icon_tint 着色。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 竖条 -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M18.2,2.5 L18.2,21.5"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.6" />
+
+    <!-- 空心右向三角 -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M16.1,12 L5.8,5 L5.8,19 Z"
+        android:strokeColor="@android:color/white"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+</vector>

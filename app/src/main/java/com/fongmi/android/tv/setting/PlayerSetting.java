@@ -149,7 +149,8 @@ public class PlayerSetting {
     }
 
     public static int getSize() {
-        return Prefers.getInt("size", 2);
+        //默认“中”：select_size 索引 1（小=0/中=1/大=2/特大=3）
+        return Prefers.getInt("size", 1);
     }
 
     public static void putSize(int size) {

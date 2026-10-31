@@ -104,7 +104,10 @@ public abstract class BaseBottomSheetDialog extends BottomSheetDialogFragment {
     protected void setBehavior(BottomSheetDialog dialog) {
         FrameLayout sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
         if (sheet == null) return;
+        //统一的暗色玻璃底（70% 不透明，上沿 22dp 圆角）：弹幕/字幕/音轨/播放设置等所有底部弹窗共用同一张形状，
+        //不再各自依赖主题色，避免“有的实心、有的透明、播放设置还是紫色渐变”的割裂感。
         if (transparent()) sheet.setBackgroundColor(ResUtil.getColor(R.color.transparent));
+        else sheet.setBackgroundResource(R.drawable.shape_dialog_glass);
         int maxHeight = getMaxHeight();
         if (maxHeight > 0) {
             ViewGroup.LayoutParams params = sheet.getLayoutParams();

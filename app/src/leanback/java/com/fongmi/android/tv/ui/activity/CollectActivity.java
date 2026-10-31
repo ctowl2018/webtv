@@ -3,6 +3,7 @@ package com.fongmi.android.tv.ui.activity;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.view.KeyEvent;
 
 import androidx.annotation.NonNull;
@@ -15,9 +16,11 @@ import androidx.viewbinding.ViewBinding;
 
 import com.bumptech.glide.Glide;
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Collect;
+import com.fongmi.android.tv.bean.Style;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Vod;
@@ -28,7 +31,9 @@ import com.fongmi.android.tv.setting.SiteHealthStore;
 import com.fongmi.android.tv.ui.adapter.CollectAdapter;
 import com.fongmi.android.tv.ui.adapter.SearchAdapter;
 import com.fongmi.android.tv.ui.base.BaseActivity;
+import com.fongmi.android.tv.ui.custom.BrandToolbar;
 import com.fongmi.android.tv.ui.custom.CustomScroller;
+import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.github.catvod.crawler.SpiderDebug;
 import com.google.gson.reflect.TypeToken;
@@ -38,6 +43,16 @@ import java.util.List;
 import java.util.Objects;
 
 public class CollectActivity extends BaseActivity implements CollectAdapter.OnClickListener, SearchAdapter.OnClickListener, CustomScroller.Callback {
+    /** 左侧源/全部列表宽度（dp），与 activity_collect.xml 中 collect 的宽度一致 */
+    private static final int SOURCE_LIST_WIDTH_DP = 196;
+    /** 海报网格与左侧源列表之间的留白（dp） */
+    private static final int GRID_START_DP = 16;
+    /** 海报网格右侧留白（dp），与首页/分类页 24dp 对齐 */
+    private static final int GRID_END_DP = 24;
+    /** 海报列间距（dp），与首页/分类页一致 */
+    private static final int GRID_SPACING_DP = 16;
+
+    private BrandToolbar mBrand;
 
     private ActivityCollectBinding mBinding;
     private CollectAdapter mCollectAdapter;
@@ -87,6 +102,7 @@ public class CollectActivity extends BaseActivity implements CollectAdapter.OnCl
 
     @Override
     protected void initView(Bundle savedInstanceState) {
+        mBrand = BrandToolbar.attach(this, mBinding.brand);
         setRecyclerView();
         setViewModel();
         saveKeyword();
@@ -96,6 +112,8 @@ public class CollectActivity extends BaseActivity implements CollectAdapter.OnCl
 
     private void setRecyclerView() {
         int count = getCount();
+        //先按海报宽度收敛左侧站点列表宽度，再建网格
+        getSourceWidth();
         mScroller = new CustomScroller(this);
         mBinding.collect.setHasFixedSize(true);
         mBinding.collect.setItemAnimator(null);
@@ -107,10 +125,13 @@ public class CollectActivity extends BaseActivity implements CollectAdapter.OnCl
                 scheduleCollect(position, 260);
             }
         });
+        mBinding.recycler.setClipChildren(false);
+        mBinding.recycler.setClipToPadding(false);
         mBinding.recycler.setHasFixedSize(true);
         mBinding.recycler.setItemAnimator(null);
         mBinding.recycler.setItemViewCacheSize(count * 3);
         mBinding.recycler.setLayoutManager(new GridLayoutManager(this, count));
+        mBinding.recycler.addItemDecoration(new SpaceItemDecoration(count, GRID_SPACING_DP));
         mBinding.recycler.addOnScrollListener(mScroller);
         mBinding.recycler.addOnScrollListener(mImageScrollListener = new RecyclerView.OnScrollListener() {
             @Override
@@ -137,7 +158,9 @@ public class CollectActivity extends BaseActivity implements CollectAdapter.OnCl
                 }
             }
         });
-        mBinding.recycler.setAdapter(mSearchAdapter = new SearchAdapter(this, getItemWidth(count), getItemHeight(count)));
+        //卡片物理尺寸与首页/分类页完全一致：直接取 Product 的行列规格，不再按当前列宽反算
+        int[] spec = Product.getSpec(Style.rect());
+        mBinding.recycler.setAdapter(mSearchAdapter = new SearchAdapter(this, spec[0], spec[1]));
     }
 
     private boolean canLoadImage() {
@@ -175,20 +198,39 @@ public class CollectActivity extends BaseActivity implements CollectAdapter.OnCl
         mSearchAdapter.clear();
         mPendingItems.clear();
         mScroller.reset();
-        mBinding.result.setText(getString(R.string.collect_result, getKeyword()));
+        //文案放在品牌工具栏里（首页源名称的位置/样式），不再单独占一行
+        mBinding.brand.brandTitle.setText(getString(R.string.collect_result, getKeyword()));
+        mBinding.brand.brandTitle.setVisibility(View.VISIBLE);
         if (mSites.isEmpty()) return;
         mCollectAdapter.add(Collect.all());
         mViewModel.searchContent(mSites, getKeyword(), false);
     }
 
     private int getCount() {
-        return 5;
+        //列数恒为「首页列数 - 1」：左边多了一列站点名，右侧海报区按海报自身的物理尺寸排布
+        return Math.max(1, Product.getColumn(Style.rect()) - 1);
     }
 
     private int getItemWidth(int count) {
-        int width = ResUtil.getScreenWidth() - ResUtil.dp2px(220);
-        int spacing = ResUtil.dp2px(8) * (count - 1);
-        return (width - spacing) / count;
+        //可用宽度 = 屏宽 - 源列表 - 网格左侧留白 - 右侧留白；再扣掉 (count-1) 个 16dp 的列间距，
+        //保证 GridLayoutManager 每格的剩余宽度正好等于 SpaceItemDecoration 的间距，不产生额外的散缝。
+        int available = ResUtil.getScreenWidth() - getSourceWidth() - ResUtil.dp2px(GRID_START_DP + GRID_END_DP);
+        int spacing = ResUtil.dp2px(GRID_SPACING_DP) * (count - 1);
+        return (available - spacing) / count;
+    }
+
+    /** 左侧站点列表宽度：不超过一个海报的宽度 */
+    private int getSourceWidth() {
+        int spec = Product.getSpec(Style.rect())[0];
+        int width = Math.min(ResUtil.dp2px(SOURCE_LIST_WIDTH_DP), spec);
+        if (mBinding != null) {
+            android.view.ViewGroup.LayoutParams params = mBinding.collect.getLayoutParams();
+            if (params.width != width) {
+                params.width = width;
+                mBinding.collect.setLayoutParams(params);
+            }
+        }
+        return width;
     }
 
     private int getItemHeight(int count) {
@@ -345,12 +387,14 @@ public class CollectActivity extends BaseActivity implements CollectAdapter.OnCl
     @Override
     protected void onResume() {
         super.onResume();
+        mBrand.start();
         mLeavingForPlayback = false;
         if (canLoadImage()) Glide.with(this).resumeRequests();
     }
 
     @Override
     protected void onDestroy() {
+        if (mBrand != null) mBrand.stop();
         if (mBinding != null) {
             mBinding.recycler.removeOnScrollListener(mScroller);
             if (mImageScrollListener != null) mBinding.recycler.removeOnScrollListener(mImageScrollListener);

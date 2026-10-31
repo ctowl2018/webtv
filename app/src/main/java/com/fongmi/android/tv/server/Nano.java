@@ -16,7 +16,6 @@ import com.fongmi.android.tv.server.process.Parse;
 import com.fongmi.android.tv.server.process.PlaybackProgressApi;
 import com.fongmi.android.tv.server.process.PlaybackRecordApi;
 import com.fongmi.android.tv.server.process.Proxy;
-import com.fongmi.android.tv.server.process.WebResourceGateway;
 import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.utils.Asset;
 
@@ -57,7 +56,6 @@ public class Nano extends NanoHTTPD {
         process.add(new PlaybackProgressApi());
         process.add(new PlaybackRecordApi());
         process.add(new Proxy());
-        process.add(new WebResourceGateway());
     }
 
     public static Response ok() {

@@ -2,9 +2,10 @@
 
     <!-- App -->
     <string name="app_name">TV</string>
-    <string name="exit_confirm_title">Exit app?</string>
-    <string name="exit_confirm_message">The current page will close. Background playback will continue if it is running.</string>
-    <string name="exit_confirm_positive">Exit</string>
+    <string name="exiting_tip">Press back again to exit</string>
+    <string name="splash_slogan">万象清音 一屏尽览 | All in One Screen</string>
+    <string name="splash_slogan_cn">万象清音 一屏尽览</string>
+    <string name="splash_slogan_en">All in One Screen</string>
 
     <!-- Live -->
     <string name="live_pass">Pass</string>
@@ -32,10 +33,14 @@
     <string name="pause">Pause</string>
     <string name="play_op">OP</string>
     <string name="play_ed">ED</string>
+    <!-- 控制条片头/片尾按钮的默认文案（设定偏移后改为显示时间） -->
+    <string name="play_skip_op">Intro</string>
+    <string name="play_skip_ed">Outro</string>
     <string name="play_exo">EXO</string>
     <string name="player_engine">Engine</string>
     <string name="play_next">Next</string>
     <string name="play_prev">Prev</string>
+    <string name="play_pause">Play / Pause</string>
     <string name="play_stop">Stop</string>
     <string name="play_repeat">Repeat</string>
     <string name="play_forward">→</string>
@@ -218,26 +223,15 @@ Build: %3$s / %4$s
 
 WebHomeTV is a player shell. It does not include content sources. Please use lawful configurations.</string>
     <string name="about_check_update">Check update</string>
-    <string name="site_block">Blocked sites</string>
     <string name="playback_sync">Viewing record sync</string>
-    <string name="codec_capability_short">Codec caps</string>
-    <string name="codec_capability_title">Hardware codec capabilities</string>
-    <string name="codec_capability_search">Search codec, mime, decoder, resolution, audio...</string>
-    <string name="codec_capability_current">Current</string>
-    <string name="codec_capability_all">All</string>
-    <string name="codec_capability_video">Video</string>
-    <string name="codec_capability_audio">Audio</string>
-    <string name="codec_capability_copy">Copy</string>
     <string name="setting_debug_log">Debug log</string>
     <string name="setting_manage_page">Management page</string>
     <string name="setting_site_health_sort">Site health ranking</string>
     <string name="setting_site_health_enable">Enable site health ranking</string>
     <string name="setting_site_health_dialog_sort">Sort site dialog</string>
     <string name="site_health_clear_done">Site health data cleared</string>
-    <string name="setting_web_home_extension">WebHome extensions</string>
     <string name="setting_git_cloud">Git cloud drive</string>
     <string name="git_cloud_account_count">Accounts %1$d</string>
-    <string name="setting_web_home_fullscreen">WebHome homepage fullscreen</string>
     <string name="setting_csp_warmup">CSP warmup</string>
     <string name="setting_csp_warmup_default">Default</string>
     <string name="setting_csp_warmup_custom">Custom</string>
@@ -253,88 +247,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="setting_family_filter_keywords">Keywords</string>
     <string name="setting_family_filter_keywords_hint">One keyword per line</string>
     <string name="setting_family_filter_saved">Family filter saved</string>
-    <string name="web_home_extension_clear_done">WebHome extension cache cleared</string>
-    <string name="web_home_extension_empty">No extensions yet. Tap Add to create a local script or add an external source.</string>
-    <string name="web_home_extension_add_source">Add</string>
-    <string name="web_home_extension_debug">Debug</string>
-    <string name="web_home_extension_refresh">Refresh</string>
-    <string name="web_home_extension_clear_cache">Clear cache</string>
-    <string name="web_home_extension_user_sources">User sources</string>
-    <string name="web_home_extension_loaded_extensions">Loaded extensions</string>
-    <string name="web_home_extension_user_source_status">User source · %1$s</string>
-    <string name="web_home_extension_site_scope">Site: %1$s</string>
-    <string name="web_home_extension_add_file">File</string>
-    <string name="web_home_extension_add_link">Link</string>
-    <string name="web_home_extension_add_code">Code</string>
-    <string name="web_home_extension_add_form">Form</string>
-    <string name="web_home_extension_form_mode">Form</string>
-    <string name="web_home_extension_text_mode">Text (JSON)</string>
-    <string name="web_home_extension_source_type">Source type</string>
-    <string name="web_home_extension_choose_file">Choose file</string>
-    <string name="web_home_extension_edit_source">Edit source</string>
-    <string name="web_home_extension_edit_code">Edit local code</string>
-    <string name="web_home_extension_edit_form">Edit form</string>
-    <string name="web_home_extension_link_hint">Extension link</string>
-    <string name="web_home_extension_json_hint">User extension sources JSON</string>
-    <string name="web_home_extension_name_hint">Name</string>
-    <string name="web_home_extension_run_at_hint">Run at</string>
-    <string name="web_home_extension_run_at_start_short">Start</string>
-    <string name="web_home_extension_run_at_end_short">End</string>
-    <string name="web_home_extension_run_at_idle_short">Idle</string>
-    <string name="web_home_extension_match_hint">Site key or regex</string>
-    <string name="web_home_extension_code_hint">JavaScript / CSS injector code</string>
-    <string name="web_home_extension_local_code_default">Local extension %1$d</string>
-    <string name="web_home_extension_delete_source_title">Delete source</string>
-    <string name="web_home_extension_delete_source_message">Delete %1$s?</string>
-    <string name="web_home_extension_source_saved">Extension source saved and preview refresh requested</string>
-    <string name="web_home_extension_source_empty">Source or code cannot be empty</string>
-    <string name="web_home_extension_source_invalid">Invalid JSON source</string>
-    <string name="web_home_extension_summary">Sources %1$d · Installed %2$d · Matched %3$d · Ready %4$d · Site %5$s</string>
-    <string name="web_home_extension_source">Source: %1$s</string>
-    <string name="web_home_extension_inline_source">Inline config</string>
-    <string name="web_home_extension_unknown_site">None</string>
-    <string name="web_home_extension_match">Match: %1$s</string>
-    <string name="web_home_extension_exclude">Exclude: %1$s</string>
-    <string name="web_home_extension_depends">Depends: %1$s</string>
-    <string name="web_home_extension_last_log">Last log: %1$s</string>
-    <string name="web_home_extension_match_mode">Match mode</string>
-    <string name="web_home_extension_match_sites">Select</string>
-    <string name="web_home_extension_match_regex">Regex</string>
-    <string name="web_home_extension_choose_sites">Choose sites</string>
-    <string name="web_home_extension_no_webhome_sites">No WebHome sites in current VOD config</string>
-    <string name="web_home_extension_select_script">Select script</string>
-    <string name="web_home_extension_enable_confirm_title">Enable extension</string>
-    <string name="web_home_extension_enable_confirm_message">After enabling, this extension can call the WebHome SDK.\n\nName: %1$s\nSource: %2$s\nMatch: %3$s</string>
-    <string name="web_home_extension_status_ready">Ready</string>
-    <string name="web_home_extension_status_injected">Injected</string>
-    <string name="web_home_extension_status_disabled">Disabled</string>
-    <string name="web_home_extension_status_unmatched">Unmatched</string>
-    <string name="web_home_extension_status_skipped">Skipped</string>
-    <string name="web_home_extension_status_matched">Matched</string>
-    <string name="web_home_extension_debug_title">WebHome debug workspace</string>
-    <string name="web_home_extension_tab_web">Web</string>
-    <string name="web_home_extension_tab_console">Console</string>
-    <string name="web_home_extension_tab_elements">Elements</string>
-    <string name="web_home_extension_tab_network">Network</string>
-    <string name="web_home_extension_tab_code">Code</string>
-    <string name="web_home_extension_inspect_element">Inspect</string>
-    <string name="web_home_extension_inspect_hint">Click an element in the Web tab to inspect it</string>
-    <string name="web_home_extension_clear_panel">Clear</string>
-    <string name="web_home_extension_save_preview">Save &amp; preview</string>
-    <string name="web_home_extension_network_all">All</string>
-    <string name="web_home_extension_network_web">Resources</string>
-    <string name="web_home_extension_network_fetch">Fetch</string>
-    <string name="web_home_extension_network_xhr">XHR</string>
-    <string name="web_home_extension_network_script">Scripts</string>
-    <string name="web_home_extension_network_error">Errors</string>
-    <string name="web_home_extension_network_native">Native</string>
-    <string name="web_home_extension_network_detail">Request detail</string>
-    <string name="web_home_extension_network_detail_smaller">-</string>
-    <string name="web_home_extension_network_detail_bigger">+</string>
-    <string name="web_home_extension_network_filter">Filter URL / status / detail</string>
-    <string name="web_home_extension_network_empty">No requests captured for this filter</string>
-    <string name="web_home_extension_network_select">Select a request to view details.</string>
-    <string name="web_home_extension_network_clear">Clear requests</string>
     <string name="setting_shell_proxy">Proxy</string>
     <string name="setting_shell_proxy_config">Proxy</string>
     <string name="setting_custom_csp">Site Injection</string>
@@ -350,10 +262,8 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="setting_custom_csp_extensions_toggle">Extensions</string>
     <string name="setting_custom_csp_extensions">extensions array</string>
     <string name="setting_custom_csp_extensions_invalid">Invalid extensions JSON</string>
-    <string name="setting_custom_csp_webhome">WebHome</string>
     <string name="setting_custom_csp_common">General CSP</string>
     <string name="setting_custom_csp_live">Live</string>
-    <string name="setting_custom_csp_webhome_name">WebHome %1$d</string>
     <string name="setting_custom_csp_common_name">General CSP %1$d</string>
     <string name="setting_custom_csp_live_name">Live %1$d</string>
     <string name="setting_custom_csp_key">Key</string>
@@ -439,8 +349,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="setting_doh">DoH</string>
     <string name="setting_proxy">Proxy</string>
     <string name="setting_cache">Cache</string>
-    <string name="setting_backup">Backup</string>
-    <string name="setting_restore">Restore</string>
     <string name="setting_version">Version</string>
     <string name="setting_choose">Choose</string>
     <string name="setting_delete">Delete</string>
@@ -451,10 +359,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
 
     <!-- Backup & Restore -->
     <string name="restore_select">Select backup</string>
-    <string name="restore_success">Restore successful</string>
-    <string name="restore_fail">Restore failed</string>
-    <string name="backup_success">Backup successful</string>
-    <string name="backup_fail">Backup failed</string>
 
     <!-- Device Sync -->
     <string name="device_select">Select devices</string>
@@ -477,7 +381,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="sync_select_none">Clear</string>
     <string name="sync_item_config">Configs and source registry</string>
     <string name="sync_item_spider">Local script/Jar data</string>
-    <string name="sync_item_webhome">WebHome data</string>
     <string name="sync_item_search">Search data</string>
     <string name="sync_item_history">Continue watching</string>
     <string name="sync_item_keep">Favorites</string>
@@ -589,6 +492,7 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <!-- Search -->
     <string name="search_keyword">Keywords…</string>
     <string name="site_search_hint">Search sites…</string>
+    <string name="site_switch_title">Switch site</string>
     <string name="search_record">History</string>
     <string name="search_suggest">Suggest</string>
     <string name="search_hot">Hot</string>
@@ -606,7 +510,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="dialog_config_preview_wall">Wallpaper config</string>
     <string name="dialog_config_preview_depot">Config repository · %1$d entries</string>
     <string name="dialog_config_preview_logo"> · logo</string>
-    <string name="dialog_config_preview_homepage"> · homepage</string>
     <string name="dialog_config_validation_failed">Import check failed: %1$s</string>
     <string name="dialog_config_validation_empty">Current config cleared</string>
     <string name="config_center_vod">Manage VOD configs</string>
@@ -1370,4 +1273,15 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
         <item>Strict</item>
     </string-array>
 
+    <string name="web_home_extension_add_source">Add</string>
+    <string name="web_home_extension_source_empty">Source or code cannot be empty</string>
+    <string name="web_home_extension_source">Source: %1$s</string>
+    <string name="setting_custom_csp_webhome">WebHome</string>
+    <string name="setting_custom_csp_webhome_name">WebHome %1$d</string>
+    <string name="play_more">More</string>
+    <string name="play_speed_label">Speed</string>
+    <string name="play_more_engine">Engine</string>
+    <string name="play_more_decode">Decode</string>
+    <string name="play_more_scale">Aspect</string>
+    <string name="play_more_title">Title</string>
 </resources>

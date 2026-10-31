@@ -73,19 +73,37 @@ public final class DanmakuSearchDialog extends BaseBottomSheetDialog implements 
         binding.recycler.setHasFixedSize(false);
         binding.recycler.addItemDecoration(new SpaceItemDecoration(1, 16));
         setKeyword(player.getMetadata().title);
-        Util.showKeyboard(binding.keyword);
+        if (Util.isLeanback()) {
+            //电视上没有输入法的“搜索”软键：默认焦点落在搜索按钮上，回车即搜当前关键字；
+            //要改关键字再往左回到输入框（在输入框上按确定才唤起软键盘，避免一开面板就被键盘挡住）。
+            binding.search.post(binding.search::requestFocus);
+        } else {
+            Util.showKeyboard(binding.keyword);
+        }
     }
 
     @Override
     protected void initEvent() {
+        binding.search.setOnClickListener(view -> doSearch());
+        binding.keyword.setOnClickListener(view -> Util.showKeyboard(binding.keyword));
         binding.keyword.setOnEditorActionListener((textView, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_SEARCH && !binding.keyword.getText().toString().trim().isEmpty()) search();
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) doSearch();
             return true;
         });
         binding.keyword.setOnKeyListener((view, keyCode, event) -> {
             if (KeyUtil.isActionDown(event) && KeyUtil.isDownKey(event) && binding.recycler.getVisibility() == VISIBLE) return binding.recycler.requestFocus();
             return false;
         });
+    }
+
+    private void doSearch() {
+        String keyword = binding.keyword.getText().toString().trim();
+        if (keyword.isEmpty()) {
+            Notify.show(R.string.search_keyword);
+            binding.keyword.requestFocus();
+            return;
+        }
+        search(keyword);
     }
 
     @Override
@@ -109,12 +127,12 @@ public final class DanmakuSearchDialog extends BaseBottomSheetDialog implements 
         binding.recycler.setVisibility(empty ? GONE : VISIBLE);
     }
 
-    private void search() {
+    private void search(String keyword) {
         showProgress();
         adapter.clear();
         Util.hideKeyboard(binding.keyword);
         DanmakuSearchRequestOwner.Token token = requests.begin();
-        DanmakuApi.newCall(binding.keyword.getText().toString().trim(), player.getMetadata().artist.toString().trim(), requests.tag()).enqueue(new Callback() {
+        DanmakuApi.newCall(keyword, player.getMetadata().artist.toString().trim(), requests.tag()).enqueue(new Callback() {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) {
                 handleResponse(token, response);

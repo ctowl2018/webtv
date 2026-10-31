@@ -6,22 +6,21 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/result"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="16dp"
-        android:singleLine="true"
-        android:textColor="@color/white"
-        android:textSize="24sp"
-        tools:text="@string/collect_result" />
+    <!-- 品牌工具栏：与首页标题栏同一套尺寸/位置，无源切换 -->
+    <include
+        android:id="@+id/brand"
+        layout="@layout/view_brand_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 
+    <!--
+      「“xx”的搜索结果」不再单独占一行：文案已上移到品牌工具栏里，用首页源名称的位置/对齐/样式呈现
+      （见 view_brand_toolbar.xml 的 brandTitle），这里直接是结果区，避免同一句话出现两次。
+    -->
     <androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="8dp"
         android:layout_weight="1"
         android:orientation="horizontal">
 
@@ -45,6 +44,7 @@
             android:clipChildren="true"
             android:clipToPadding="true"
             android:overScrollMode="never"
+            android:paddingStart="16dp"
             android:paddingEnd="24dp"
             android:paddingBottom="24dp" />
 

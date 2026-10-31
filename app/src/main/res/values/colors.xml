@@ -2,7 +2,22 @@
 
     <color name="transparent">#00000000</color>
     <color name="black">#000000</color>
-    <color name="startup_background">#032B51</color>
+    <!-- 全局深色背景：替代原有渐变壁纸，作为各页面统一底色 -->
+    <color name="background_dark">#0E1116</color>
+    <color name="background_dark_surface">#151A21</color>
+    <!-- 播放控制条：半透明深色底（约 82% 不透明），保证其上白色图标/文字对比度 ≥ 12:1 -->
+    <color name="control_scrim">#D10E1116</color>
+    <!-- 控制条“…”菜单底色（近乎不透明的深色，避免菜单文字透过视频背景） -->
+    <color name="control_menu_surface">#F2101216</color>
+    <!-- 播放控制条聚焦强调色：进度条拿到焦点时的已播放段/滑块/时间文字（纯白，与常规态同色，
+         聚焦主要靠下方光带表达；早期为橙色 #FF9F1A，按要求改白） -->
+    <color name="control_focus">#FFFFFF</color>
+    <!-- 进度条聚焦光带（白色约 20% 不透明）：垫在轨道下方表达“变粗”，不缩放控件 -->
+    <color name="control_focus_glow">#33FFFFFF</color>
+    <!-- 启动窗口底色：与 startup_logo.jpg / 图标卡片底色同色，保证启动无跳色 -->
+    <color name="startup_background">#0C1219</color>
+    <!-- 自适应图标背景：与 v2 图标卡片底色 #0C1219 完全一致，遮罩裁切时不露色差 -->
+    <color name="ic_launcher_background">#0C1219</color>
     <color name="theme_green">#43A047</color>
     <color name="theme_green_dark">#2E7D32</color>
     <color name="theme_green_light">#C8E6C9</color>
@@ -19,7 +34,6 @@
     <color name="black_80">#CC000000</color>
     <color name="black_90">#E6000000</color>
     <color name="white">#FFFFFF</color>
-    <color name="exit_confirm_secondary_text">#99FFFFFF</color>
     <color name="white_05">#0DFFFFFF</color>
     <color name="white_15">#26FFFFFF</color>
     <color name="white_10">#1AFFFFFF</color>

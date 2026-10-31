@@ -1,167 +1,233 @@
 <?xml version="1.0" encoding="utf-8"?>
-<HorizontalScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  点播控制条按钮行
+  直接展示：上集、下集（图标）、弹幕（图标+开关两态）、字幕（图标）、音轨（图标）、倍速（图标）、播放设置（图标）、
+  以及紧随其后的「片头 / 片尾」纯文字按钮，三者之间用 1dp 竖线（│）分隔：播放设置 │ 片头 │ 片尾。
+  所有可见按钮使用 ControlSlot 固定 50x40dp 槽位，左右各 3dp 外边距 → 相邻按钮间距恒为 6dp，
+  文字按钮用 ControlTextSlot（minWidth 58dp，可容「跳过片头 / 00:00」两种状态），整行紧凑且不裁切。
+  其余操作统一收进“播放设置”面板（ControlDialog，见 VideoActivity#onControlPanel）。
+  这些按钮仍保留在 hidden 容器里（visibility=gone）：底部控制面板 ControlDialog、
+  音频面板等通过 parent.control.action.<id> 转发点击与读取可见性，删除会导致其失效。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:fillViewport="true"
-    android:scrollbars="none">
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
 
+    <!--
+      播放/暂停：位于「上一集」之前，按当前播放状态自动轮换图标（播放中=橙色暂停条，暂停=橙色三角）。
+      尺寸不跟其它按钮对齐：60×48dp 槽位、图标 40dp（比常规 50×40/24dp 大一档）；
+      聚焦与其它控制条按钮一致：半透明白色圆角块（selector_chip）。
+    -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/playPause"
+        style="@style/ControlPlaySlot"
+        android:contentDescription="@string/play_pause"
+        android:nextFocusRight="@id/prev"
+        android:src="@drawable/ic_control_pause_tone" />
+
+    <!-- 上一集 / 下一集：与播放键贴紧成一组（外边距各 1dp，组内间距约 2dp） -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/prev"
+        style="@style/ControlIconSlot"
+        android:layout_marginStart="1dp"
+        android:layout_marginEnd="1dp"
+        android:contentDescription="@string/play_prev"
+        android:nextFocusLeft="@id/playPause"
+        android:nextFocusRight="@id/next"
+        android:src="@drawable/ic_control_prev" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/next"
+        style="@style/ControlIconSlot"
+        android:layout_marginStart="1dp"
+        android:layout_marginEnd="1dp"
+        android:contentDescription="@string/play_next"
+        android:nextFocusLeft="@id/prev"
+        android:nextFocusRight="@id/danmaku"
+        android:src="@drawable/ic_control_next" />
+
+    <!-- 播放组与后续操作的分隔线：样式/颜色/上下留白沿用 ControlDivider -->
+    <View style="@style/ControlDivider" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/danmaku"
+        style="@style/ControlIconSlot"
+        android:contentDescription="@string/danmaku"
+        android:nextFocusLeft="@id/next"
+        android:nextFocusRight="@id/text"
+        android:src="@drawable/selector_control_danmaku"
+        android:visibility="gone"
+        app:tint="@color/selector_control_danmaku_tint"
+        tools:visibility="visible" />
+
+    <com.fongmi.android.tv.ui.custom.CustomUpDownView
+        android:id="@+id/text"
+        style="@style/ControlSlot"
+        android:drawableStart="@drawable/ic_control_subtitle"
+        android:drawablePadding="0dp"
+        android:drawableTint="@color/selector_control_icon_tint"
+        android:nextFocusLeft="@id/danmaku"
+        android:nextFocusRight="@id/audio"
+        android:tag="3" />
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/audio"
+        style="@style/ControlIconSlot"
+        android:contentDescription="@string/play_track_audio"
+        android:nextFocusLeft="@id/text"
+        android:nextFocusRight="@id/speedBtn"
+        android:src="@drawable/ic_control_audio"
+        android:tag="1" />
+
+    <!-- 倍速：独立图标按钮（原先在“…”菜单里）
+         单击打开倍速设置面板；长按在 1.0x 与默认倍速之间切换；
+         上/下连发沿用 CustomUpDownView 的 ±0.25x 绑定，短按上/下仍按原有规则移动焦点 -->
+    <com.fongmi.android.tv.ui.custom.CustomUpDownView
+        android:id="@+id/speedBtn"
+        style="@style/ControlSlot"
+        android:contentDescription="@string/play_speed_label"
+        android:drawableStart="@drawable/ic_control_speed"
+        android:drawablePadding="0dp"
+        android:drawableTint="@color/selector_control_icon_tint"
+        android:nextFocusLeft="@id/audio"
+        android:nextFocusRight="@id/panelBtn" />
+
+    <!-- 播放设置：取代原先的“…”更多按钮（其菜单项均已并入该设置面板），图标按参考图的螺母形重绘 -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/panelBtn"
+        style="@style/ControlIconSlot"
+        android:contentDescription="@string/setting_player"
+        android:nextFocusLeft="@id/speedBtn"
+        android:nextFocusRight="@id/opening"
+        android:src="@drawable/ic_control_panel" />
+
+    <!--
+      弹性留白：把「│ 片头 片尾」这一组整体推到按钮行最右侧，与左侧常规按钮分离。
+      留白不可聚焦，遥控器左右移动时会被跳过；小屏下留白先被压缩到 0，文字仍完整显示。
+    -->
+    <Space
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1" />
+
+    <!--
+      片头 / 片尾：固定在最右端，用 1dp 竖线（│）与左侧按钮分组：… 播放设置 │ 片头 片尾；
+      片头与片尾之间不分隔（同组同类项）。纯文字、无图标；
+      未设定时显示「片头/片尾」，设定后由业务层换成时间（mm:ss），两种文案都在 58dp 槽位内完整显示。
+      交互不变（单击进面板、长按复位、上下连发调秒数）。
+    -->
+    <View style="@style/ControlDivider" />
+
+    <com.fongmi.android.tv.ui.custom.CustomUpDownView
+        android:id="@+id/opening"
+        style="@style/ControlTextSlot"
+        android:contentDescription="@string/play_skip_op"
+        android:nextFocusLeft="@id/panelBtn"
+        android:nextFocusRight="@id/ending"
+        android:text="@string/play_op" />
+
+    <com.fongmi.android.tv.ui.custom.CustomUpDownView
+        android:id="@+id/ending"
+        style="@style/ControlTextSlot"
+        android:contentDescription="@string/play_skip_ed"
+        android:nextFocusLeft="@id/opening"
+        android:text="@string/play_ed" />
+
+    <!-- 以下按钮不再直接在控制条展示，仅供面板转发与状态读取 -->
     <LinearLayout
-        android:id="@+id/container"
+        android:id="@+id/hidden"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/next"
-            style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:nextFocusLeft="@id/repeat"
-            android:text="@string/play_next" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/prev"
-            style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:text="@string/play_prev" />
+        android:orientation="horizontal"
+        android:visibility="gone">
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/reset"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/play_reset" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/replay"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/play_replay" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/change2"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/play_change" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/fullscreen"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/play_fullscreen" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/player"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/play_exo" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/decode"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/play_decode" />
 
         <com.fongmi.android.tv.ui.custom.CustomUpDownView
             android:id="@+id/speed"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:fontFeatureSettings="tnum"
             android:text="@string/play_speed" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/scale"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/play_scale" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/lut"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/play_lut" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/share"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/play_share" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/panel"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:text="@string/setting_player" />
-
-        <com.fongmi.android.tv.ui.custom.CustomUpDownView
-            android:id="@+id/text"
-            style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:tag="3"
-            android:text="@string/play_track_text" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/audio"
-            style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:tag="1"
-            android:text="@string/play_track_audio" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/video"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
             android:tag="2"
             android:text="@string/play_track_video" />
-
-        <com.fongmi.android.tv.ui.custom.CustomUpDownView
-            android:id="@+id/opening"
-            style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:text="@string/play_op" />
-
-        <com.fongmi.android.tv.ui.custom.CustomUpDownView
-            android:id="@+id/ending"
-            style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:text="@string/play_ed" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/danmaku"
-            style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:text="@string/danmaku"
-            android:visibility="gone"
-            tools:visibility="visible" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/chapter"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:text="@string/play_chapter"
-            android:visibility="gone"
-            tools:visibility="visible" />
+            android:text="@string/play_chapter" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/title"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:text="@string/play_title"
-            android:visibility="gone"
-            tools:visibility="visible" />
+            android:text="@string/play_title" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/immersiveAudio"
             style="@style/Control"
-            android:layout_marginEnd="12dp"
-            android:text="@string/player_immersive_audio_mode"
-            android:visibility="gone" />
+            android:text="@string/player_immersive_audio_mode" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/repeat"
             style="@style/Control"
-            android:nextFocusRight="@id/next"
             android:text="@string/play_repeat" />
 
     </LinearLayout>
-</HorizontalScrollView>
+
+</LinearLayout>

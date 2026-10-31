@@ -127,8 +127,10 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
         setControlPadding();
         binding.decode.setText(parent.control.action.decode.getText());
         setLut();
-        binding.ending.setText(parent.control.action.ending.getText());
-        binding.opening.setText(parent.control.action.opening.getText());
+        //控制条上的片头/片尾已改为纯图标（参考图的竖条+空心三角），文字只保留在面板里：
+        //这里直接按 history 里的偏移量取标签，不再依赖控制条按钮上的文字。
+        binding.ending.setText(getOffsetLabel(history == null ? 0 : history.getEnding(), R.string.play_skip_ed));
+        binding.opening.setText(getOffsetLabel(history == null ? 0 : history.getOpening(), R.string.play_skip_op));
         binding.repeat.setSelected(parent.control.action.repeat.isSelected());
         binding.timer.setSelected(Timer.get().isRunning());
         setTrackVisible();
@@ -141,8 +143,11 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
         binding.getRoot().postDelayed(this::focusInitialControl, 180);
     }
 
-    private void setControlPadding() {
-        int bottom = scrollBasePaddingBottom + getNavigationBottomInset();
+    private String getOffsetLabel(long value, int defaultRes) {
+        return value <= 0 ? getString(defaultRes) : Util.timeMs(value);
+    }
+
+    private void setControlPadding() {        int bottom = scrollBasePaddingBottom + getNavigationBottomInset();
         binding.controlScroll.setPaddingRelative(binding.controlScroll.getPaddingStart(), binding.controlScroll.getPaddingTop(), binding.controlScroll.getPaddingEnd(), bottom);
     }
 
@@ -337,7 +342,9 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
     protected void setBehavior(BottomSheetDialog dialog) {
         FrameLayout sheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
         if (sheet == null) return;
-        sheet.setBackgroundColor(ResUtil.getColor(R.color.transparent));
+        //与弹幕/字幕/音轨等弹窗共用同一张“暗色玻璃”背景（70% 不透明 + 上沿 22dp 圆角），
+        //原先面板自带的紫色渐变已移除，播放设置不再与其它弹窗风格割裂。
+        sheet.setBackgroundResource(R.drawable.shape_dialog_glass);
         BottomSheetBehavior<FrameLayout> behavior = BottomSheetBehavior.from(sheet);
         behavior.setFitToContents(false);
         behavior.setDraggable(false);

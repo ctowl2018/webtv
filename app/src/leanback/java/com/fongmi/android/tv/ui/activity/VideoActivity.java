@@ -14,6 +14,9 @@ import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import android.graphics.Color;
+import android.widget.LinearLayout;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.activity.result.ActivityResultLauncher;
@@ -27,6 +30,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.media3.common.C;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
+import androidx.media3.common.Tracks;
 import androidx.media3.common.VideoSize;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.RecyclerView;
@@ -64,7 +68,6 @@ import com.fongmi.android.tv.player.lut.LutStore;
 import com.fongmi.android.tv.playback.PlaybackEventCollector;
 import com.fongmi.android.tv.service.PlaybackService;
 import com.fongmi.android.tv.setting.DanmakuSetting;
-import com.fongmi.android.tv.setting.PlayerButtonSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.PreloadSetting;
 import com.fongmi.android.tv.setting.Setting;
@@ -92,6 +95,7 @@ import com.fongmi.android.tv.ui.dialog.SpeedSettingDialog;
 import com.fongmi.android.tv.ui.dialog.ChapterDialog;
 import com.fongmi.android.tv.ui.dialog.SubtitleSettingDialog;
 import com.fongmi.android.tv.ui.dialog.TitleDialog;
+import com.fongmi.android.tv.ui.custom.BrandToolbar;
 import com.fongmi.android.tv.ui.dialog.TrackDialog;
 import com.fongmi.android.tv.utils.Clock;
 import com.fongmi.android.tv.utils.FileChooser;
@@ -101,6 +105,7 @@ import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Sniffer;
 import com.fongmi.android.tv.utils.Task;
+import com.fongmi.android.tv.utils.Tip;
 import com.fongmi.android.tv.utils.Traffic;
 import com.fongmi.android.tv.utils.Util;
 import com.github.catvod.crawler.SpiderDebug;
@@ -149,18 +154,29 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private Runnable mR3;
     private Runnable mR4;
     private Clock mClock;
+    private BrandToolbar mBrand;
     private View mFocus1;
     private View mFocus2;
+    //长按按钮弹出的面板关闭后，控制条要回到的那个按钮（一次性）
+    private View mReturnFocus;
+    private boolean blockCenterKeyUp;
+    private Boolean mPlayPauseShown;
+    //用户刚下发的播放/暂停意图，等 onIsPlayingChanged 回执确认后清空
+    private Boolean mPlayPausePending;
+    private int mPlayPauseRetry;
     private Result mPendingDetail;
     private Result mPendingPlayer;
     private String playHealthKey;
     private long detailStartTime;
     private long playerStartTime;
     private boolean pendingLutImport;
-    private Map<String, View> mActionButtons;
     private AudioStageController mAudio;
     private QuickSearchDialog mQuickSearchDialog;
     private boolean quickSearchDialogClosed;
+    //命令下发后等真实状态回执的兜底检查间隔/次数（仅缓冲、命令未落地时才会重试）
+    private static final long PLAY_PAUSE_CONFIRM_DELAY = 400;
+    private static final int PLAY_PAUSE_CONFIRM_RETRY = 5;
+    private final Runnable mPlayPauseConfirm = this::reconcilePlayPause;
 
     private final ActivityResultLauncher<Intent> mLutDir = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
         if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null || result.getData().getData() == null) return;
@@ -382,13 +398,17 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         super.initView(savedInstanceState);
         SpiderDebug.log("video-flow", "initView after playback cost=%dms", System.currentTimeMillis() - start);
         mFrameParams = mBinding.video.getLayoutParams();
+        mBrand = BrandToolbar.attach(this, mBinding.brand);
         mClock = Clock.create(mBinding.widget.clock);
         mKeyDown = CustomKeyDownVod.create(this);
         mObserveDetail = this::setDetail;
         mObservePlayer = this::setPlayer;
         mObserveSearch = this::setSearch;
         mBroken = new ArrayList<>();
-        mR1 = this::hideControl;
+        mR1 = () -> {
+            //双保险：暂停时不允许自动隐藏控制条
+            if (player().isPlaying()) hideControl();
+        };
         mR2 = this::updateFocus;
         mR3 = this::setTraffic;
         mR4 = this::showEmpty;
@@ -418,24 +438,36 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.video.setOnClickListener(view -> onVideo());
         mBinding.change1.setOnClickListener(view -> onChange());
         mBinding.content.setOnClickListener(view -> onContent());
+        //控制条固定按钮：上集、下集、弹幕、字幕、音轨、倍速、片头、片尾、播放设置
+        //其余按钮在布局中保持 gone，仅用于底部控制面板（ControlDialog）的转发与状态同步
         mBinding.control.action.text.setOnClickListener(this::onTrack);
         mBinding.control.action.audio.setOnClickListener(this::onTrack);
         mBinding.control.action.video.setOnClickListener(this::onTrack);
         mBinding.control.action.speed.setUpListener(this::onSpeedAdd);
         mBinding.control.action.speed.setDownListener(this::onSpeedSub);
+        //倍速独立图标按钮：与隐藏的 speed 视图共用同一套逻辑
+        mBinding.control.action.speedBtn.setUpListener(this::onSpeedAdd);
+        mBinding.control.action.speedBtn.setDownListener(this::onSpeedSub);
+        mBinding.control.action.speedBtn.setOnClickListener(view -> SpeedSettingDialog.show(this, player()));
+        mBinding.control.action.speedBtn.setOnLongClickListener(view -> onSpeedLong());
         mBinding.control.action.ending.setUpListener(this::onEndingAdd);
         mBinding.control.action.ending.setDownListener(this::onEndingSub);
         mBinding.control.action.opening.setUpListener(this::onOpeningAdd);
         mBinding.control.action.opening.setDownListener(this::onOpeningSub);
         mBinding.control.action.text.setUpListener(this::onSubtitleClick);
         mBinding.control.action.text.setDownListener(this::onSubtitleClick);
+        //播放/暂停：同一个按钮按播放状态轮换图标（换图在 onPaused/onPlay 内部即时完成）
+        mBinding.control.action.playPause.setOnClickListener(view -> {
+            if (player().isPlaying()) onPaused();
+            else onPlay();
+        });
         mBinding.control.action.next.setOnClickListener(view -> checkNext());
         mBinding.control.action.prev.setOnClickListener(view -> checkPrev());
+        mBinding.control.action.panelBtn.setOnClickListener(view -> onControlPanel());
         mBinding.control.action.scale.setOnClickListener(view -> onScale());
         mBinding.control.action.lut.setOnClickListener(view -> onLut());
         mBinding.control.action.share.setOnClickListener(view -> onShare());
         mBinding.control.action.panel.setOnClickListener(view -> onControlPanel());
-        setupActionButtons();
         mBinding.control.action.speed.setOnClickListener(view -> SpeedSettingDialog.show(this, player()));
         mBinding.control.action.reset.setOnClickListener(view -> onReset());
         mBinding.control.action.title.setOnClickListener(view -> onTitle());
@@ -448,13 +480,18 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.control.action.replay.setOnClickListener(view -> onReplay());
         mBinding.control.action.change2.setOnClickListener(view -> onChange());
         mBinding.control.action.fullscreen.setOnClickListener(view -> onFullscreen());
-        mBinding.control.action.danmaku.setOnClickListener(view -> onDanmaku());
-        mBinding.control.action.danmaku.setOnLongClickListener(view -> onDanmakuShow());
+        //弹幕：单击开/关，长按打开弹幕设置面板
+        mBinding.control.action.danmaku.setOnClickListener(view -> onDanmakuToggle());
+        mBinding.control.action.danmaku.setOnLongClickListener(view -> {
+            //长按松手时系统还会补一次 click；面板弹出后控制条已隐藏，
+            //Enter 的 ACTION_UP 会落回 Activity 被当成“播放/暂停”，这里先立起抑制窗口再弹面板。
+            suppressCenterKey();
+            onDanmaku();
+            return true;
+        });
         mBinding.control.action.opening.setOnClickListener(view -> onOpening());
         mBinding.control.action.speed.setOnLongClickListener(view -> onSpeedLong());
         mBinding.control.action.reset.setOnLongClickListener(view -> onResetToggle());
-        mBinding.control.action.ending.setOnLongClickListener(view -> onEndingReset());
-        mBinding.control.action.opening.setOnLongClickListener(view -> onOpeningReset());
         mBinding.video.setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
         mBinding.flag.addOnChildViewHolderSelectedListener(new FlagSelectionListener(mBinding.flag, mFlagAdapter, this));
         mBinding.episode.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
@@ -470,6 +507,32 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
                 if (mEpisodeAdapter.getItemCount() > 40 && position > 1) scrollToEpisode(mArrayAdapter.getStart(position));
             }
         });
+        bindControlFocus();
+    }
+
+    /**
+     * 控制条的焦点链：进度条在上、按钮行在下（见 view_control_vod.xml）。
+     * 早期版本按钮行在上、进度条在下，view_control_seek.xml 里写的是「向上→按钮行」；
+     * 两者对调后这条写死的方向就反了，按上会把焦点送到下方的按钮行，按下则原地不动。
+     * 这里按当前顺序显式绑定，并且两端都不再环回（按钮行到底、进度条到顶都停在原控件上）。
+     */
+    private void bindControlFocus() {
+        View timeBar = mBinding.control.seek.getFocusView();
+        if (timeBar == null) return;
+        timeBar.setNextFocusUpId(timeBar.getId());
+        timeBar.setNextFocusDownId(R.id.prev);
+        timeBar.setNextFocusLeftId(timeBar.getId());
+        timeBar.setNextFocusRightId(timeBar.getId());
+        View[] icons = {mBinding.control.action.prev, mBinding.control.action.next, mBinding.control.action.danmaku, mBinding.control.action.audio, mBinding.control.action.panelBtn};
+        for (View view : icons) {
+            if (view == null) continue;
+            view.setNextFocusUpId(timeBar.getId());
+            view.setNextFocusDownId(view.getId());
+        }
+        //水平方向取消首尾相接（原先 prev←more、more→prev 会绕整整一行）
+        //按钮行末位现在是「跳过片尾」（片头/片尾被弹性留白推到最右端），右边界停在它身上
+        mBinding.control.action.prev.setNextFocusLeftId(View.NO_ID);
+        mBinding.control.action.ending.setNextFocusRightId(View.NO_ID);
     }
 
     private void setRecyclerView() {
@@ -599,36 +662,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     @Override
     public void onDanmakuPanel() {
         onDanmaku();
-    }
-
-    private void setupActionButtons() {
-        mActionButtons = new HashMap<>();
-        addActionButton(PlayerButtonSetting.NEXT, mBinding.control.action.next);
-        addActionButton(PlayerButtonSetting.PREV, mBinding.control.action.prev);
-        addActionButton(PlayerButtonSetting.RESET, mBinding.control.action.reset);
-        addActionButton(PlayerButtonSetting.REPLAY, mBinding.control.action.replay);
-        addActionButton(PlayerButtonSetting.CHANGE, mBinding.control.action.change2);
-        addActionButton(PlayerButtonSetting.FULLSCREEN, mBinding.control.action.fullscreen);
-        addActionButton(PlayerButtonSetting.PLAYER, mBinding.control.action.player);
-        addActionButton(PlayerButtonSetting.DECODE, mBinding.control.action.decode);
-        addActionButton(PlayerButtonSetting.SPEED, mBinding.control.action.speed);
-        addActionButton(PlayerButtonSetting.SCALE, mBinding.control.action.scale);
-        addActionButton(PlayerButtonSetting.LUT, mBinding.control.action.lut);
-        addActionButton(PlayerButtonSetting.SHARE, mBinding.control.action.share);
-        addActionButton(PlayerButtonSetting.TEXT, mBinding.control.action.text);
-        addActionButton(PlayerButtonSetting.AUDIO, mBinding.control.action.audio);
-        addActionButton(PlayerButtonSetting.VIDEO, mBinding.control.action.video);
-        addActionButton(PlayerButtonSetting.OPENING, mBinding.control.action.opening);
-        addActionButton(PlayerButtonSetting.ENDING, mBinding.control.action.ending);
-        addActionButton(PlayerButtonSetting.DANMAKU, mBinding.control.action.danmaku);
-        addActionButton(PlayerButtonSetting.CHAPTER, mBinding.control.action.chapter);
-        addActionButton(PlayerButtonSetting.TITLE, mBinding.control.action.title);
-        addActionButton(PlayerButtonSetting.REPEAT, mBinding.control.action.repeat);
-        PlayerButtonSetting.applyOrder(mBinding.control.action.container, mActionButtons);
-    }
-
-    private void addActionButton(String id, View view) {
-        mActionButtons.put(id, view);
     }
 
     private void onLut() {
@@ -961,7 +994,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mEpisodeAdapter.notifySelectionChanged(oldPosition, newPosition);
         SpiderDebug.log("video-episode", "select old=%s new=%s focus=%s scroll=%s name=%s", oldPosition, newPosition, mBinding.episode.hasFocus(), scrollToEpisode, item.getName());
         if (scrollToEpisode && !mBinding.episode.hasFocus()) scrollToEpisode(newPosition);
-        if (isFullscreen()) Notify.show(getString(R.string.play_ready, item.getName()));
         onRefresh();
     }
 
@@ -1119,6 +1151,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.video.setForeground(null);
         mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
         mBinding.flag.setSelectedPosition(mFlagAdapter.getPosition());
+        //全屏播放时品牌栏让位给画面（详情页才显示）
+        mBinding.brand.getRoot().setVisibility(View.GONE);
         mKeyDown.setFull(true);
         setFullscreen(true);
         mFocus2 = null;
@@ -1128,6 +1162,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.video.setForeground(ResUtil.getDrawable(R.drawable.selector_video));
         mBinding.video.setLayoutParams(mFrameParams);
         getFocus1().requestFocus();
+        mBinding.brand.getRoot().setVisibility(View.VISIBLE);
         mKeyDown.setFull(false);
         setFullscreen(false);
         mFocus2 = null;
@@ -1217,19 +1252,26 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void onSpeedAdd() {
-        mBinding.control.action.speed.setText(player().addSpeed(0.25f));
-        mHistory.setSpeed(player().getSpeed());
+        updateSpeed(player().addSpeed(0.25f));
     }
 
     private void onSpeedSub() {
-        mBinding.control.action.speed.setText(player().subSpeed(0.25f));
-        mHistory.setSpeed(player().getSpeed());
+        updateSpeed(player().subSpeed(0.25f));
     }
 
     private boolean onSpeedLong() {
-        mBinding.control.action.speed.setText(player().toggleSpeed());
-        mHistory.setSpeed(player().getSpeed());
+        updateSpeed(player().toggleSpeed());
         return true;
+    }
+
+    /**
+     * 倍速变化后的状态同步：隐藏的 speed 视图保留数值文本（底部控制面板 ControlDialog 读取），
+     * 控制条上的倍速按钮只显示图标，数值改在控制条上方提示，避免按了上/下没有反馈。
+     */
+    private void updateSpeed(String text) {
+        mBinding.control.action.speed.setText(text);
+        mHistory.setSpeed(player().getSpeed());
+        Notify.show(ResUtil.getString(R.string.play_speed_label) + " " + text + "x");
     }
 
     private void onReset() {
@@ -1273,14 +1315,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         setOpening(Math.max(0, Math.max(0, mHistory.getOpening()) - 1000));
     }
 
-    private boolean onOpeningReset() {
-        setOpening(0);
-        return true;
-    }
-
     private void setOpening(long opening) {
         mHistory.setOpening(opening);
-        mBinding.control.action.opening.setText(opening <= 0 ? getString(R.string.play_op) : Util.timeMs(mHistory.getOpening()));
+        //控制条按钮 = 图标 + 文字：未设定时显示“跳过片头”，设定后显示具体秒数
+        mBinding.control.action.opening.setText(opening <= 0 ? getString(R.string.play_skip_op) : Util.timeMs(opening));
     }
 
     private void onEnding() {
@@ -1297,14 +1335,87 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         setEnding(Math.max(0, Math.max(0, mHistory.getEnding()) - 1000));
     }
 
-    private boolean onEndingReset() {
-        setEnding(0);
-        return true;
+    private void setEnding(long ending) {
+        //ending 的存储语义沿用 main：距结尾还剩多久。这里只补一个上限约束——
+        //原代码不设上限，连按上键能把片尾顶到比片长还大，阈值 duration-ending 变负会导致误判，
+        //因此夹紧到 0..duration-1s，其余逻辑与 main 完全一致。
+        long duration = player().getDuration();
+        if (duration > 0) ending = Math.min(ending, Math.max(0, duration - 1000));
+        ending = Math.max(0, ending);
+        mHistory.setEnding(ending);
+        mBinding.control.action.ending.setText(ending <= 0 ? getString(R.string.play_skip_ed) : Util.timeMs(endingPoint(ending)));
     }
 
-    private void setEnding(long ending) {
-        mHistory.setEnding(ending);
-        mBinding.control.action.ending.setText(ending <= 0 ? getString(R.string.play_ed) : Util.timeMs(mHistory.getEnding()));
+    /**
+     * 片尾按钮显示的是“片尾从哪一刻开始”（duration - ending），与片头显示绝对位置保持同一语义。
+     * 早期直接显示 ending（距结尾还剩多久），在 40:00 按下片尾却显示 05:05，和进度条对不上，
+     * 很容易被当成 bug。存储值不变，只是把展示换算成绝对时间。
+     */
+    private String endingText(long ending) {
+        return ending <= 0 ? getString(R.string.play_skip_ed) : Util.timeMs(endingPoint(ending));
+    }
+
+    /** 片尾文案要等拿到 duration 才能换算成绝对时间，所以每帧便宜地对一下（不一致才 setText）。 */
+    private void refreshEndingText() {
+        if (mHistory == null) return;
+        String want = endingText(mHistory.getEnding());
+        CharSequence now = mBinding.control.action.ending.getText();
+        if (now == null || !want.contentEquals(now)) mBinding.control.action.ending.setText(want);
+    }
+
+    private long endingPoint(long ending) {
+        long duration = player().getDuration();
+        return duration > 0 ? Math.max(0, duration - ending) : ending;
+    }
+
+    /**
+     * 播放/暂停按钮的图标随播放状态轮换：播放中=暂停条，暂停/未播=三角。
+     * 状态来源分三层，缺一不可：
+     * 1) requestPlayPause：用户操作的第一时间按“意图”换图，消除按键到回调之间的空窗；
+     * 2) confirmPlayPause：onIsPlayingChanged 回执为准，任何来源（遥控器/耳机/系统媒体键）的真实状态变化都在这里收敛；
+     * 3) reconcilePlayPause：命令没落地（缓冲/失败）时的兜底，最终以真实状态为准。
+     */
+    private void updatePlayPause() {
+        if (mBinding.control.action.playPause == null) return;
+        //意图未确认前以意图为准，避免被“尚未生效”的旧状态顶回去
+        applyPlayPause(mPlayPausePending != null ? mPlayPausePending : player().isPlaying());
+    }
+
+    /** 用户按下播放/暂停：先换图再发命令，UI 不再等 1s 一次的时钟 tick。 */
+    private void requestPlayPause(boolean playing) {
+        mPlayPausePending = playing;
+        mPlayPauseRetry = 0;
+        App.post(mPlayPauseConfirm, PLAY_PAUSE_CONFIRM_DELAY);
+        applyPlayPause(playing);
+    }
+
+    /** 播放器真实状态回执：以它为准，清掉未确认的意图。 */
+    private void confirmPlayPause(boolean playing) {
+        mPlayPausePending = null;
+        App.removeCallbacks(mPlayPauseConfirm);
+        applyPlayPause(playing);
+    }
+
+    /**
+     * 兜底：命令迟迟没有生效时用真实状态校正。
+     * 缓冲/空片时 isPlaying 恒为 false，此时不能用它覆盖用户意图（否则刚按播放图标又跳回三角），
+     * 先重试几轮等真正开播；仍不生效才承认命令失败。
+     */
+    private void reconcilePlayPause() {
+        if (mPlayPausePending == null) return;
+        if (isBuffering() || player().isEmpty()) {
+            if (mPlayPauseRetry++ < PLAY_PAUSE_CONFIRM_RETRY) App.post(mPlayPauseConfirm, PLAY_PAUSE_CONFIRM_DELAY);
+            return;
+        }
+        confirmPlayPause(player().isPlaying());
+    }
+
+    /** 真正落图的唯一入口：只在显示态变化时换图，避免每帧重建 drawable。 */
+    private void applyPlayPause(boolean playing) {
+        if (mBinding.control.action.playPause == null) return;
+        if (mPlayPauseShown != null && mPlayPauseShown == playing) return;
+        mPlayPauseShown = playing;
+        mBinding.control.action.playPause.setImageResource(playing ? R.drawable.ic_control_pause_tone : R.drawable.ic_control_play_tone);
     }
 
     private void onChoose() {
@@ -1348,17 +1459,29 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         hideControl();
     }
 
+    /**
+     * 长按弹幕按钮：打开弹幕设置面板
+     */
     private void onDanmaku() {
+        //面板弹出会先收起控制条，这里把「上次按钮」和「返回按钮」都钉在弹幕键上：
+        //否则面板关掉后 getFocus2() 只能回退到默认的「下一集」，焦点会莫名其妙跳走。
+        View danmaku = mBinding.control.action.danmaku;
+        mFocus2 = danmaku;
+        mReturnFocus = danmaku;
         DanmakuDialog.create().player(player()).show(this);
         hideControl();
     }
 
-    private boolean onDanmakuShow() {
+    /**
+     * 单击弹幕按钮：切换弹幕开/关
+     */
+    private void onDanmakuToggle() {
+        //长按打开面板后，系统还会补发一次 click，这里不能再把弹幕关掉
+        if (isCenterKeySuppressed()) return;
         DanmakuSetting.putShow(!DanmakuSetting.isShow());
         player().applyDanmakuState();
         mBinding.control.action.danmaku.setSelected(DanmakuSetting.isEnabled());
         Notify.show(DanmakuSetting.isEnabled() ? R.string.danmaku_on : R.string.danmaku_off);
-        return true;
     }
 
     private void onToggle() {
@@ -1390,13 +1513,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.widget.text.setText("");
     }
 
-    private void showInfo() {
-        showTopInfo();
-        mBinding.widget.center.setVisibility(View.VISIBLE);
-        mBinding.widget.duration.setText(player().getDurationTime());
-        mBinding.widget.position.setText(player().getPositionTime(0));
-    }
-
     private void showTopInfo() {
         mBinding.widget.top.setVisibility(View.VISIBLE);
         mBinding.widget.size.setText(player().getSizeText());
@@ -1407,16 +1523,73 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.widget.center.setVisibility(View.GONE);
     }
 
+
+    //“…”更多按钮已移除：其菜单项（换源/内核/解码/缩放/视频轨/播放设置）分别由播放页的换源按钮
+    //与“播放设置”面板（ControlDialog）承接，控制条上只保留一个螺母形的播放设置图标入口。
+
+    private void showTrack(int type) {
+        TrackDialog.create().type(type).player(player()).show(this);
+        hideControl();
+    }
+
     private void showControl(View view) {
         if (mOsd != null) mOsd.setControlsVisible(true);
         showTopInfo();
         mBinding.control.getRoot().setVisibility(View.VISIBLE);
-        view.requestFocus();
+        updatePlayPause();
+        requestControlFocus(view);
         setR1Callback();
+    }
+
+    /**
+     * 控制条里有一批长期 GONE 的按钮（面板转发用），还有弹幕未加载时被隐藏的弹幕按钮。
+     * 直接对它们 requestFocus() 会静默失败，控制条显示出来了却没有焦点，遥控器就像失灵一样。
+     */
+    private void requestControlFocus(View view) {
+        View target = canTakeControlFocus(view) ? view : mBinding.control.action.next;
+        if (target == null) return;
+        if (target.requestFocus()) return;
+        //控件刚 setVisibility(VISIBLE) 时可能还没完成布局，下一帧再试一次
+        target.post(() -> {
+            if (isVisible(mBinding.control.getRoot()) && !target.hasFocus()) target.requestFocus();
+        });
+    }
+
+    private boolean canTakeControlFocus(View view) {
+        //这里不用 isShown()：控制条刚从 GONE 变 VISIBLE 的同一帧里它可能仍返回 false，
+        //会让明明存在的目标按钮被判定为“不可聚焦”，从而回退到默认的「下一集」。
+        return view != null && isInControlBar(view) && view.getVisibility() == View.VISIBLE && view.isEnabled() && view.isFocusable();
+    }
+
+    private boolean isInControlBar(View view) {
+        if (view == null || mBinding == null) return false;
+        ViewGroup bar = mBinding.control.getRoot();
+        Object parent = view;
+        while (parent instanceof View) {
+            if (parent == bar) return true;
+            parent = ((View) parent).getParent();
+        }
+        return false;
+    }
+
+    /**
+     * 长按按钮弹出面板时立起抑制标记：面板是异步弹出的，松手的 ACTION_UP 往往还落在
+     * Activity 上，而此刻控制条已隐藏，会被 CustomKeyDownVod 当成一次 Enter 松开 → 切换播放/暂停。
+     * 标记只对“这一次按下”有效，下一次按下会重新置位，不会吞掉用户后续的确认键。
+     */
+    private void suppressCenterKey() {
+        blockCenterKeyUp = true;
+    }
+
+    private boolean isCenterKeySuppressed() {
+        return blockCenterKeyUp;
     }
 
     private void hideControl() {
         if (mOsd != null) mOsd.setControlsVisible(false);
+        //隐藏前先把焦点收回播放器：控件即将 GONE 时系统会清空窗口焦点，
+        //再次呼出控制条就可能拿不到“上次停在哪个按钮”，表现为偶发焦点丢失。
+        if (isInControlBar(getCurrentFocus()) && !mBinding.video.hasFocus()) mBinding.video.requestFocus();
         mBinding.control.getRoot().setVisibility(View.GONE);
         if (player().isPlaying()) mBinding.widget.top.setVisibility(View.GONE);
         App.removeCallbacks(mR1);
@@ -1434,6 +1607,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void setR1Callback() {
+        App.removeCallbacks(mR1);
+        //暂停时控制条常显：不排自动隐藏，直到用户按返回/退出或恢复播放
+        if (!player().isPlaying()) return;
         App.post(mR1, Constant.INTERVAL_HIDE);
     }
 
@@ -1486,8 +1662,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mHistory = mHistory == null ? createHistory(item) : mHistory;
         if (!TextUtils.isEmpty(getMark())) mHistory.setVodRemarks(getMark());
         if (Setting.isIncognito() && mHistory.getKey().equals(getHistoryKey())) mHistory.delete();
-        mBinding.control.action.opening.setText(mHistory.getOpening() <= 0 ? getString(R.string.play_op) : Util.timeMs(mHistory.getOpening()));
-        mBinding.control.action.ending.setText(mHistory.getEnding() <= 0 ? getString(R.string.play_ed) : Util.timeMs(mHistory.getEnding()));
+        mBinding.control.action.opening.setText(mHistory.getOpening() <= 0 ? getString(R.string.play_skip_op) : Util.timeMs(mHistory.getOpening()));
+        refreshEndingText();
         applyHistorySpeed();
         mHistory.setVodName(item.getName());
         setArtwork(item.getPic());
@@ -1630,7 +1806,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     private void applyHistorySpeed() {
         if (mHistory == null) return;
-        mBinding.control.action.speed.setText(player().setSpeed(mHistory.getSpeed()));
     }
 
     @Override
@@ -1652,6 +1827,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     @Override
     protected void onError(String msg) {
         recordPlayHealth(false, msg);
+        //命令已经失败，作废未确认的播放意图，避免图标卡在乐观状态
+        mPlayPausePending = null;
+        App.removeCallbacks(mPlayPauseConfirm);
         Track.delete(player().getKey());
         mClock.setCallback(null);
         player().resetTrack();
@@ -1689,11 +1867,15 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     @Override
     protected void onPlayingChanged(boolean isPlaying) {
         PlaybackEventCollector.get().onIsPlayingChanged(player(), isPlaying);
+        //真实播放状态回执：按钮图标立刻与之对齐（不再等 onTimeChanged 的 1s tick）
+        confirmPlayPause(isPlaying);
         if (mAudio != null) mAudio.onPlayingChanged(isPlaying);
         if (isPlaying) {
             hideCenter();
         } else if (isPaused()) {
-            if (isFullscreen()) showInfo();
+            //暂停不再弹居中的播放图标/时间叠层：只保留顶部片名与时长信息。
+            //居中叠层现在只服务于「快进/快退」的过程提示（见 onSeeking），暂停态不再借用它。
+            if (isFullscreen()) showTopInfo();
             else hideInfo();
         }
     }
@@ -1719,9 +1901,13 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         if (mAudio != null) mAudio.onTimeChanged();
         PlaybackEventCollector.get().onProgress(mHistory, player());
         if (mHistory.canSave() && mHistory.canSync()) syncHistory();
+        //片尾文案依赖 duration，拿到时长后换算成“片尾从哪一刻开始”
+        refreshEndingText();
+        //片尾判定沿用 main 分支原始实现：到达 duration - ending 即认为本集结束。
         if (mHistory.getEnding() > 0 && duration > 0 && mHistory.getEnding() + position >= duration) {
             checkEnded(false);
         }
+        updatePlayPause();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -1743,9 +1929,24 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void setTrackVisible() {
-        mBinding.control.action.text.setVisibility(player().haveTrack(C.TRACK_TYPE_TEXT) || player().isVod() ? View.VISIBLE : View.GONE);
+        boolean hasText = player().haveTrack(C.TRACK_TYPE_TEXT) || player().isVod();
+        mBinding.control.action.text.setVisibility(hasText ? View.VISIBLE : View.GONE);
+        //字幕图标按“是否已选中字幕轨”显示激活态
+        mBinding.control.action.text.setSelected(hasText && isTextSelected());
         mBinding.control.action.audio.setVisibility(player().haveTrack(C.TRACK_TYPE_AUDIO) ? View.VISIBLE : View.GONE);
         mBinding.control.action.video.setVisibility(player().haveTrack(C.TRACK_TYPE_VIDEO) ? View.VISIBLE : View.GONE);
+    }
+
+    private boolean isTextSelected() {
+        try {
+            Tracks tracks = player().getCurrentTracks();
+            for (Tracks.Group group : tracks.getGroups()) {
+                if (group.getType() != C.TRACK_TYPE_TEXT) continue;
+                for (int i = 0; i < group.length; i++) if (group.isTrackSelected(i)) return true;
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
     }
 
     private void setTitleVisible() {
@@ -1897,13 +2098,22 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void onPaused() {
+        //先换图再发命令：controller() 是 MediaController 代理，pause() 走 IPC 异步生效，
+        //调用后立刻查 isPlaying 仍是 true，旧写法会把图标留在“暂停条”上直到下次时钟 tick
+        requestPlayPause(false);
         controller().pause();
+        //正在倒计时的自动隐藏要取消，否则暂停后控制条仍会自己消失
+        App.removeCallbacks(mR1);
+        //暂停即呼出控制条：用户按下暂停多半就是想操作，没必要再手动唤一次
+        if (isGone(mBinding.control.getRoot())) showControl(getFocus2());
     }
 
     private void onPlay() {
+        requestPlayPause(true);
         if (mHistory != null && isEnded()) controller().seekTo(mHistory.getOpening());
         if (!player().isEmpty() && isIdle()) controller().prepare();
         controller().play();
+        if (isVisible(mBinding.control.getRoot())) setR1Callback();
     }
 
     private boolean onSeekBack() {
@@ -1954,14 +2164,34 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private View getFocus2() {
-        return mFocus2 == null || mFocus2.getVisibility() != View.VISIBLE || mFocus2 == mBinding.control.action.opening || mFocus2 == mBinding.control.action.ending ? mBinding.control.action.next : mFocus2;
+        //刚关掉面板时优先回到发起它的那个按钮（弹幕键），用一次即清空
+        if (mReturnFocus != null) {
+            View view = mReturnFocus;
+            mReturnFocus = null;
+            if (canTakeControlFocus(view)) return view;
+        }
+        if (canTakeControlFocus(mFocus2) && mFocus2 != mBinding.control.action.opening && mFocus2 != mBinding.control.action.ending) return mFocus2;
+        return mBinding.control.action.next;
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (isFullscreen() && KeyUtil.isMenuKey(event)) onToggle();
-        if (isVisible(mBinding.control.getRoot())) setR1Callback();
-        if (isVisible(mBinding.control.getRoot())) mFocus2 = getCurrentFocus();
+        if (isVisible(mBinding.control.getRoot())) {
+            setR1Callback();
+            //只记录控制条内的真实焦点：切换过程中 getCurrentFocus() 会瞬时为 null，
+            //若无条件覆盖，记住的“上次按钮”就被清掉，下次呼出控制条只能回到默认按钮。
+            View focus = getCurrentFocus();
+            if (isInControlBar(focus)) mFocus2 = focus;
+        }
+        //长按弹出面板后的松手事件直接吞掉，避免控制条已隐藏时 Enter 落到播放器切成暂停
+        if (KeyUtil.isEnterKey(event)) {
+            if (KeyUtil.isActionDown(event)) blockCenterKeyUp = false;
+            else if (blockCenterKeyUp) {
+                blockCenterKeyUp = false;
+                return true;
+            }
+        }
         if (onEpisodeKey(event)) return true;
         if (isFullscreen() && isGone(mBinding.control.getRoot()) && mKeyDown.hasEvent(event) && service() != null) return mKeyDown.onKeyDown(event);
         if (KeyUtil.isMediaFastForward(event)) return onSeekForward();
@@ -2001,6 +2231,11 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onKeyUp() {
+        //刚从面板返回：这一下只负责把控制条呼出并交还给原按钮，不要抢去设片头/片尾
+        if (mReturnFocus != null) {
+            showControl(getFocus2());
+            return;
+        }
         long position = player().getPosition();
         long duration = player().getDuration();
         if (player().canSetOpening(position, duration)) {
@@ -2019,10 +2254,14 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onKeyCenter() {
-        if (player().isPlaying()) onPaused();
+        //先记下“这次是按暂停还是按播放”：pause() 是异步的，调完立刻查 isPlaying 仍为 true，
+        //用旧写法会把刚呼出的控制条又收起来。
+        boolean toPause = player().isPlaying();
+        if (toPause) onPaused();
         else if (player().isEmpty()) onRefresh();
         else onPlay();
-        hideControl();
+        //暂停：控制条由 onPaused 呼出并常显；恢复播放：收起控制条
+        if (!toPause) hideControl();
     }
 
     @Override
@@ -2050,12 +2289,17 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         super.onStart();
         if (mOsd != null) mOsd.start();
         mClock.stop().start();
+        if (mBrand != null) mBrand.start();
+        //播放页不显示任何提示窗（提示会压在控制条按钮上），进入时整体关闭
+        Tip.setBlocked(true);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        Tip.setBlocked(false);
         if (mOsd != null) mOsd.stop();
+        if (mBrand != null) mBrand.stop();
         // The media service can unbind while the activity is still stopping (session teardown,
         // background kill); every player touch here must survive a null service.
         if (service() != null) PlaybackEventCollector.get().onStop(player());
@@ -2091,6 +2335,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         DanmakuApi.cancel();
         RefreshEvent.keep();
         App.removeCallbacks(mR1, mR2, mR3, mR4);
+        App.removeCallbacks(mPlayPauseConfirm);
         SiteHealthStore.flush();
         PlaybackEventCollector.get().setPlayer(null);
         PlaybackEventCollector.get().updateHistory(null);

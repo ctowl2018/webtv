@@ -16,7 +16,6 @@ import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.setting.CustomCspSetting;
 import com.fongmi.android.tv.utils.UrlUtil;
-import com.fongmi.android.tv.web.ext.WebHomeExtensionRegistry;
 import com.github.catvod.bean.Doh;
 import com.github.catvod.bean.Header;
 import com.github.catvod.bean.Proxy;
@@ -33,6 +32,10 @@ import java.util.stream.Collectors;
 public class VodConfig extends BaseConfig {
 
     private static final String TAG = VodConfig.class.getSimpleName();
+
+    //内置点播源地址留空，首次启动不预置默认源，由用户在设置中自行添加。
+    public static final String DEFAULT_URL = "";
+    public static final String DEFAULT_NAME = "默认点播源";
 
     private Site home;
     private String wall;
@@ -74,7 +77,10 @@ public class VodConfig extends BaseConfig {
     }
 
     public VodConfig init() {
-        return config(Config.vod());
+        Config config = Config.vod();
+        //无配置时直接写入内置点播源并加载：不做 ConfigImport 预检，也不要求用户手动导入。
+        if (TextUtils.isEmpty(config.getUrl())) config = Config.create(VOD, DEFAULT_URL, DEFAULT_NAME);
+        return config(config);
     }
 
     public VodConfig config(Config config) {
@@ -93,7 +99,6 @@ public class VodConfig extends BaseConfig {
         rules = null;
         parses = null;
         allowedOrigins = null;
-        WebHomeExtensionRegistry.get().setGlobalSources(null, "");
         BaseLoader.get().clear();
         RuleConfig.get().invalidate();
         return this;
@@ -177,7 +182,6 @@ public class VodConfig extends BaseConfig {
         initWall(config, object);
         initSite(config, object);
         initParse(config, object);
-        WebHomeExtensionRegistry.get().setGlobalSources(object.get("webHomeExtensions"), config.getUrl());
         config.setLogo(Json.safeString(object, "logo"));
         config.setNotice(Json.safeString(object, "notice"));
         config.setDanmaku(Json.safeString(object, "danmaku"));

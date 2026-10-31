@@ -1244,7 +1244,7 @@ function setSyncMode(next) {
     $('#syncDirectionBtn').text(syncMode === 'push' ? '推送' : '拉取');
 }
 function toggleSyncMode() { setSyncMode(syncMode === 'push' ? 'pull' : 'push'); }
-function syncOptionIds() { return ['syncOptConfig', 'syncOptSpider', 'syncOptLoginState', 'syncOptWebHome', 'syncOptSearch', 'syncOptHistory', 'syncOptKeep', 'syncOptSettings']; }
+function syncOptionIds() { return ['syncOptConfig', 'syncOptSpider', 'syncOptLoginState', 'syncOptSearch', 'syncOptHistory', 'syncOptKeep', 'syncOptSettings']; }
 function allSyncSelected() { return syncOptionIds().every(id => $('#' + id).prop('checked')); }
 function toggleSyncSelection() {
     const checked = !allSyncSelected();
@@ -1261,7 +1261,6 @@ function syncOptionsPayload() {
         config: $('#syncOptConfig').prop('checked'),
         spider: $('#syncOptSpider').prop('checked'),
         loginState: $('#syncOptLoginState').prop('checked'),
-        webHome: $('#syncOptWebHome').prop('checked'),
         search: $('#syncOptSearch').prop('checked'),
         history: $('#syncOptHistory').prop('checked'),
         keep: $('#syncOptKeep').prop('checked'),

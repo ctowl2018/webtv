@@ -23,6 +23,7 @@ import com.fongmi.android.tv.ui.adapter.HotWordAdapter;
 import com.fongmi.android.tv.ui.adapter.RecordAdapter;
 import com.fongmi.android.tv.ui.adapter.WordAdapter;
 import com.fongmi.android.tv.ui.base.BaseActivity;
+import com.fongmi.android.tv.ui.custom.BrandToolbar;
 import com.fongmi.android.tv.ui.custom.CustomKeyboard;
 import com.fongmi.android.tv.ui.custom.CustomTextListener;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
@@ -44,6 +45,7 @@ import okhttp3.Call;
 import okhttp3.Response;
 
 public class SearchActivity extends BaseActivity implements WordAdapter.OnClickListener, RecordAdapter.OnClickListener, CustomKeyboard.Callback {
+    private BrandToolbar mBrand;
 
     private ActivitySearchBinding mBinding;
     private RecordAdapter mRecordAdapter;
@@ -95,6 +97,7 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
 
     @Override
     protected void initView(Bundle savedInstanceState) {
+        mBrand = BrandToolbar.attach(this, mBinding.brand);
         CustomKeyboard.init(this, mBinding);
         setRecyclerView();
         checkKeyword();
@@ -448,12 +451,14 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
     @Override
     protected void onPause() {
         super.onPause();
+        mBrand.stop();
         mBinding.mic.setFocusable(false);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        mBrand.start();
         mBinding.mic.setFocusable(true);
         mBinding.keyword.requestFocus();
     }

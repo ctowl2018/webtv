@@ -1,16 +1,12 @@
 package com.fongmi.android.tv.ui.dialog;
 
-import android.app.Dialog;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
-import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -26,26 +22,31 @@ import com.fongmi.android.tv.databinding.DialogSiteBinding;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.impl.SiteListener;
 import com.fongmi.android.tv.ui.adapter.SiteAdapter;
+import com.fongmi.android.tv.ui.custom.CustomTextListener;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
-public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickListener {
+/**
+ * 首页点 Logo 弹出的「切换源」面板。
+ * <p>
+ * 容器换成与播放控制条「播放设置」（ControlDialog）同一套底部面板：
+ * 同一张 {@code shape_dialog_glass} 玻璃底、同样的上滑动画、ControlSheetTitle 标题、
+ * 同一张 {@code selector_control_sheet_button}（默认/选中/焦点三态）与统一的 13sp 字号。
+ * 站点网格、搜索过滤、配置/搜索模式/换源模式/全选/取消 这些功能与数据逻辑原样保留。
+ */
+public class SiteDialog extends BaseBottomSheetDialog implements SiteAdapter.OnClickListener {
 
     private static final int GRID_COUNT = 3;
-    private static final String TAG = "site_dialog";
-    private static final int ITEM_HEIGHT = 46;
-    private static final int ITEM_SPACE = 12;
-    private static final int MAX_HEIGHT = 344;
+    private static final int ITEM_HEIGHT = 40;
+    private static final int ITEM_SPACE = 10;
+    private static final int MAX_HEIGHT = 300;
 
     private RecyclerView.ItemDecoration decoration;
     private DialogSiteBinding binding;
     private FragmentActivity activity;
-    private Dialog directDialog;
     private SiteListener listener;
     private SiteAdapter adapter;
-    private long showStart;
     private boolean action;
     private int type;
 
@@ -64,68 +65,25 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     }
 
     public void show(FragmentActivity activity) {
-        showStart = System.currentTimeMillis();
         this.activity = activity;
         if (activity instanceof SiteListener) listener = (SiteListener) activity;
         if (activity.isFinishing() || activity.isDestroyed()) return;
-        showDirect(activity);
+        for (Fragment f : activity.getSupportFragmentManager().getFragments()) if (f instanceof SiteDialog) return;
+        show(activity.getSupportFragmentManager(), null);
     }
 
     private int getCount() {
         return GRID_COUNT;
     }
 
-    private float getWidth() {
-        return action ? 0.92f : 0.9f;
-    }
-
     @Override
-    protected ViewBinding getBinding() {
-        return binding = DialogSiteBinding.inflate(getLayoutInflater());
-    }
-
-    @Override
-    protected MaterialAlertDialogBuilder getBuilder() {
-        return builder().setView(getBinding().getRoot());
-    }
-
-    @NonNull
-    @Override
-    public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        Dialog dialog = new Dialog(requireActivity());
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(getBinding().getRoot());
-        initView();
-        initEvent();
-        return dialog;
-    }
-
-    private void showDirect(FragmentActivity activity) {
-        binding = DialogSiteBinding.inflate(activity.getLayoutInflater());
-        directDialog = new Dialog(activity);
-        directDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        directDialog.setContentView(binding.getRoot());
-        initView();
-        initEvent();
-        if (adapter.getItemCount() == 0) {
-            directDialog = null;
-            // Opening the switcher on an empty list must say so instead of failing silently.
-            Notify.show(R.string.error_empty);
-            return;
-        }
-        directDialog.setOnDismissListener(d -> {
-            directDialog = null;
-            binding = null;
-            this.activity = null;
-        });
-        directDialog.show();
-        applyWindow(directDialog.getWindow());
+    protected ViewBinding getBinding(@NonNull LayoutInflater inflater, @Nullable ViewGroup container) {
+        return binding = DialogSiteBinding.inflate(inflater, container, false);
     }
 
     @Override
     protected void initView() {
         adapter = new SiteAdapter(this);
-        setRootWidth();
         setRecyclerHeight();
         binding.keyword.setVisibility(View.GONE);
         binding.action.setVisibility(action ? View.VISIBLE : View.GONE);
@@ -137,6 +95,10 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         setType(type);
         setRecyclerView();
         setMode();
+        if (adapter.getItemCount() == 0) {
+            Notify.show(R.string.error_empty);
+            binding.getRoot().post(this::dismiss);
+        }
     }
 
     @Override
@@ -151,13 +113,13 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         binding.cancel.setOnClickListener(v -> adapter.cancelAll());
         binding.search.setOnClickListener(v -> setType(v.isSelected() ? 0 : 1));
         binding.change.setOnClickListener(v -> setType(v.isSelected() ? 0 : 2));
-        binding.keyword.addTextChangedListener(new com.fongmi.android.tv.ui.custom.CustomTextListener() {
+        binding.keyword.addTextChangedListener(new CustomTextListener() {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 adapter.filter(s.toString());
                 setRecyclerView();
                 setMode();
-                setWidth();
+                setRecyclerHeight();
             }
         });
     }
@@ -166,23 +128,18 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         if (binding.recycler.getAdapter() == null) binding.recycler.setAdapter(adapter);
         binding.recycler.setHasFixedSize(true);
         binding.recycler.setItemAnimator(null);
-        if (decoration == null) binding.recycler.addItemDecoration(decoration = new SpaceItemDecoration(getCount(), 16));
+        if (decoration == null) binding.recycler.addItemDecoration(decoration = new SpaceItemDecoration(getCount(), ITEM_SPACE));
         if (binding.recycler.getLayoutManager() == null) binding.recycler.setLayoutManager(new GridLayoutManager(getDialogActivity(), getCount()));
     }
 
     private void setRecyclerHeight() {
         int rows = Math.max(1, (int) Math.ceil((double) adapter.getItemCount() / getCount()));
         int height = rows * ResUtil.dp2px(ITEM_HEIGHT) + Math.max(0, rows - 1) * ResUtil.dp2px(ITEM_SPACE);
+        //面板整体要留在屏幕内：列表最多占屏幕高度的 55%，超出的部分由网格自己滚动
+        int maxHeight = Math.min(ResUtil.dp2px(MAX_HEIGHT), (int) (ResUtil.getScreenHeight() * 0.55f));
         ViewGroup.LayoutParams params = binding.recycler.getLayoutParams();
-        params.height = Math.min(height, ResUtil.dp2px(MAX_HEIGHT));
+        params.height = Math.min(height, maxHeight);
         binding.recycler.setLayoutParams(params);
-    }
-
-    private void setRootWidth() {
-        ViewGroup.LayoutParams params = binding.getRoot().getLayoutParams();
-        if (params == null) params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.width = (int) (ResUtil.getScreenWidth() * getWidth());
-        binding.getRoot().setLayoutParams(params);
     }
 
     private void setType(int type) {
@@ -197,14 +154,10 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
         binding.mode.setEnabled(false);
     }
 
-    private void setWidth() {
-        setWidth(getWidth());
-    }
-
     private void onMode(View view) {
         setRecyclerView();
         setMode();
-        setWidth();
+        setRecyclerHeight();
     }
 
     @Override
@@ -236,30 +189,6 @@ public class SiteDialog extends BaseAlertDialog implements SiteAdapter.OnClickLi
     }
 
     private FragmentActivity getDialogActivity() {
-        return activity != null ? activity : requireActivity();
-    }
-
-    private void applyWindow(Window window) {
-        if (window == null) return;
-        window.setWindowAnimations(0);
-        window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        WindowManager.LayoutParams params = window.getAttributes();
-        params.width = (int) (ResUtil.getScreenWidth() * getWidth());
-        params.height = WindowManager.LayoutParams.WRAP_CONTENT;
-        window.setAttributes(params);
-    }
-
-    @Override
-    public void dismiss() {
-        if (directDialog != null) directDialog.dismiss();
-        else super.dismiss();
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        Window window = getDialog() == null ? null : getDialog().getWindow();
-        applyWindow(window);
-        if (adapter.getItemCount() == 0) dismiss();
+        return getActivity() != null ? getActivity() : activity;
     }
 }

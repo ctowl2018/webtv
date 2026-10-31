@@ -2,6 +2,7 @@ package com.fongmi.android.tv.ui.adapter;
 
 import android.view.LayoutInflater;
 import android.view.KeyEvent;
+import android.view.animation.DecelerateInterpolator;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
@@ -19,6 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SearchAdapter extends RecyclerView.Adapter<SearchAdapter.ViewHolder> {
+
+    //与首页/分类页海报一致的聚焦缩放缓动
+    private static final float ZOOM = 1.1f;
+    private static final long ZOOM_DURATION = 150L;
 
     private final OnClickListener listener;
     private final List<Vod> items;
@@ -114,6 +119,11 @@ public class SearchAdapter extends RecyclerView.Adapter<SearchAdapter.ViewHolder
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         ViewHolder holder = new ViewHolder(AdapterSearchBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false));
+        //与首页/分类页一致：聚焦时整卡放大 1.1 倍、150ms 缓出（Leanback 的 FocusHighlight 同参数）
+        holder.binding.getRoot().setOnFocusChangeListener((view, hasFocus) -> {
+            view.animate().cancel();
+            view.animate().scaleX(hasFocus ? ZOOM : 1f).scaleY(hasFocus ? ZOOM : 1f).setDuration(ZOOM_DURATION).setInterpolator(new DecelerateInterpolator()).start();
+        });
         holder.binding.getRoot().getLayoutParams().width = width;
         holder.binding.getRoot().getLayoutParams().height = height + ResUtil.dp2px(34);
         holder.binding.image.getLayoutParams().height = height;

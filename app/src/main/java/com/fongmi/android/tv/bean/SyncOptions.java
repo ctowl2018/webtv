@@ -18,6 +18,7 @@ public class SyncOptions {
     private boolean history = true;
     @SerializedName("keep")
     private boolean keep = true;
+    //保留字段以兼容旧备份与管理页 JSON，WebHome 功能已移除，该选项不再生效
     @SerializedName("webHome")
     private boolean webHome = true;
     @SerializedName("settings")
@@ -85,14 +86,7 @@ public class SyncOptions {
         return this;
     }
 
-    public boolean isWebHome() {
-        return webHome;
-    }
 
-    public SyncOptions webHome(boolean webHome) {
-        this.webHome = webHome;
-        return this;
-    }
 
     public boolean isSettings() {
         return settings;

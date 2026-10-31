@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  片头（跳过片头）：按参考图重绘的“竖条 + 空心左向三角”。
+  参考图实测比例（以图标总高 70px 为基准）：竖条高 70、宽 6；三角高 52、宽 38，三角尖端距竖条约 2px，
+  二者都只有描边、无填充，端点与拐角为圆头。
+  换算到 24dp 画布：竖条高 19dp、三角 10.3 x 14dp、描边 1.6dp（与控制条其它图标同粗），视觉外框 14 x 19dp。
+  纯白，由 selector_control_icon_tint 着色。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 竖条 -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M5.8,2.5 L5.8,21.5"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.6" />
+
+    <!-- 空心左向三角 -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M7.9,12 L18.2,5 L18.2,19 Z"
+        android:strokeColor="@android:color/white"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.6" />
+</vector>

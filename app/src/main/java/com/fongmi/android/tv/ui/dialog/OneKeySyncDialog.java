@@ -205,7 +205,7 @@ public class OneKeySyncDialog extends BaseBottomSheetDialog implements SyncDevic
     }
 
     private MaterialCheckBox[] boxes() {
-        return new MaterialCheckBox[]{binding.config, binding.spider, binding.webHome, binding.search, binding.history, binding.keep, binding.settings, binding.loginState};
+        return new MaterialCheckBox[]{binding.config, binding.spider, binding.search, binding.history, binding.keep, binding.settings, binding.loginState};
     }
 
     private void updateSyncPathSummary() {
@@ -220,7 +220,6 @@ public class OneKeySyncDialog extends BaseBottomSheetDialog implements SyncDevic
         return SyncOptions.defaults()
                 .config(binding.config.isChecked())
                 .spider(binding.spider.isChecked())
-                .webHome(binding.webHome.isChecked())
                 .search(binding.search.isChecked())
                 .history(binding.history.isChecked())
                 .keep(binding.keep.isChecked())

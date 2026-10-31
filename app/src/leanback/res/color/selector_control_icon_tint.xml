@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 控制条图标着色：聚焦/激活为白 + 黄，未激活为 70% 白，保证可辨且状态有区分 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/white" android:state_focused="true" />
+    <item android:color="@color/yellow_500" android:state_selected="true" />
+    <item android:color="@color/white_70" />
+</selector>

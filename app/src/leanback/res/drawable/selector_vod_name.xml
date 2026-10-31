@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 海报片名底：默认沿用原来的 20% 黑；选中态换成 75% 黑色块，焦点提示只落在文字区 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:drawable="@drawable/shape_vod_name_focused" android:state_focused="true" />
+    <item android:drawable="@drawable/shape_vod_name" />
+
+</selector>

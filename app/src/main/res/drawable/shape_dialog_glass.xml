@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  底部弹窗统一背景（弹幕 / 字幕 / 音轨 / 播放设置等全部复用这一个形状）。
+
+  观感：暗色玻璃 —— 顶部略亮、底部略深，上沿带一道极细的高光边；底部贴屏幕边缘不描边。
+  透明度：整体 70% 不透明（alpha 0xB3 = 179/255 ≈ 70%），可透过弹窗隐约看到播放画面，
+         但白色文字/图标对比度仍在 7:1 以上。
+  圆角：仅上沿 22dp（与之前的播放设置面板一致），下沿直角贴底。
+
+  若要更透/更实，只改两个渐变色里的 B3：0x80≈50%、0xCC≈80%。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <gradient
+        android:angle="270"
+        android:endColor="#B30E1116"
+        android:startColor="#B31A2029"
+        android:type="linear" />
+
+    <corners
+        android:topLeftRadius="22dp"
+        android:topRightRadius="22dp" />
+
+    <stroke
+        android:width="1dp"
+        android:color="#1FFFFFFF" />
+</shape>

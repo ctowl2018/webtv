@@ -2,7 +2,8 @@
 
     <style name="Theme.Base" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/white</item>
-        <item name="android:windowBackground">@color/black</item>
+        <item name="android:windowBackground">@color/background_dark</item>
+        <item name="android:colorBackground">@color/background_dark</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowTranslucentStatus">true</item>
         <item name="android:windowTranslucentNavigation">true</item>
@@ -43,6 +44,105 @@
         <item name="android:nextFocusDown">@id/timeBar</item>
         <item name="android:textColor">@color/text</item>
         <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="ControlIcon">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/selector_chip</item>
+        <item name="android:focusable">true</item>
+        <item name="android:focusableInTouchMode">true</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:scaleType">center</item>
+        <item name="tint">@color/white</item>
+    </style>
+
+    <!-- 控制条按钮槽位：固定宽高（所有按钮大小一致），左右各 3dp → 相邻间距 6dp（更紧凑） -->
+    <style name="ControlSlot">
+        <item name="android:layout_width">50dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:layout_marginHorizontal">3dp</item>
+        <item name="android:background">@drawable/selector_chip</item>
+        <item name="android:focusable">true</item>
+        <item name="android:focusableInTouchMode">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:nextFocusUp">@id/timeBar</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!--
+      图标+文字槽位（片头/片尾）：图标在前、文字在后，同一行垂直居中；宽度随内容走，
+      标签为“跳过片头/跳过片尾”，设定后变成长度不同的时间（如 01:30），布局自动适应。
+      排布按“更紧凑”调过：内边距 10/12 → 6/8dp、图标与文字间距 6 → 4dp，左右外边距 3 → 2dp；
+      文字加粗（类黑体的粗体观感），在遥控器距离下更清晰。
+    -->
+    <style name="ControlIconTextSlot" parent="ControlSlot">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_marginHorizontal">2dp</item>
+        <item name="android:paddingStart">6dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:drawablePadding">4dp</item>
+        <item name="android:drawableTint">@color/selector_control_icon_tint</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!--
+      纯文字槽位（片头/片尾）：不再带图标，只显示文字（片头 / 片尾）或时间（00:00）；
+      minWidth 58dp 保证「跳过片头」与「00:00」两种状态都不裁切、且宽度不跳变；
+      数字用 tnum 等宽，时间刷新时不抖动；左右内边距收到 9dp，整体更紧凑。
+    -->
+    <style name="ControlTextSlot" parent="ControlSlot">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:minWidth">58dp</item>
+        <item name="android:layout_marginHorizontal">2dp</item>
+        <item name="android:paddingStart">9dp</item>
+        <item name="android:paddingEnd">9dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 控制条分组竖线：…… │ 片头 片尾（不可聚焦，纯视觉分隔） -->
+    <style name="ControlDivider">
+        <item name="android:layout_width">1dp</item>
+        <item name="android:layout_height">16dp</item>
+        <item name="android:layout_marginHorizontal">5dp</item>
+        <item name="android:background">#33FFFFFF</item>
+        <item name="android:focusable">false</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <!--
+      播放/暂停槽位：比常规按钮略大（60×48dp，图标 40dp），四周留 10dp/4dp 内边距。
+      聚焦与其它控制条按钮一致：半透明白色圆角块（selector_chip）。
+    -->
+    <style name="ControlPlaySlot">
+        <item name="android:layout_width">60dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_marginStart">0dp</item>
+        <item name="android:layout_marginEnd">2dp</item>
+        <item name="android:background">@drawable/selector_chip</item>
+        <item name="android:focusable">true</item>
+        <item name="android:focusableInTouchMode">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:nextFocusUp">@id/timeBar</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">4dp</item>
+        <item name="android:paddingBottom">4dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <!-- 图标槽位：与文字槽位同宽同高，图标居中、按状态着色 -->
+    <style name="ControlIconSlot" parent="ControlSlot">
+        <item name="android:padding">8dp</item>
+        <item name="android:scaleType">centerInside</item>
+        <item name="tint">@color/selector_control_icon_tint</item>
     </style>
 
     <style name="ControlSheetTitle">
@@ -94,6 +194,49 @@
         <item name="android:textColor">@color/white</item>
         <item name="android:textSize">12sp</item>
         <item name="android:focusable">true</item>
+    </style>
+
+    <!-- 首页右上角工具图标（搜索/收藏/设置）：仅图标、无文字，40dp 方形热区保证遥控器可聚焦，
+         图标本体 24dp 并在方形内居中，与右侧时钟的垂直居中对齐由父容器 center_vertical 保证。 -->
+    <style name="HomeToolbarIcon">
+        <item name="android:layout_width">34dp</item>
+        <item name="android:layout_height">34dp</item>
+        <item name="android:layout_gravity">center_vertical</item>
+        <item name="android:background">@drawable/selector_toolbar_icon</item>
+        <item name="android:focusable">true</item>
+        <item name="android:focusableInTouchMode">true</item>
+        <item name="android:padding">7dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:tint">@color/white</item>
+    </style>
+
+    <!-- 首页/分类页左侧「首页」导航胶囊：房子图标 + 文字，选中与聚焦复用分类标签的圆角样式 -->
+    <style name="HomeNavChip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_gravity">center_vertical</item>
+        <item name="android:background">@drawable/selector_item_round</item>
+        <item name="android:drawablePadding">6dp</item>
+        <item name="android:focusable">true</item>
+        <item name="android:focusableInTouchMode">true</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <!-- 切换源面板右侧操作按钮：复用播放设置面板的 selector（同一套默认/选中/焦点表现），
+         36dp 方形、7dp 间距，与左侧站点网格的行高对齐。 -->
+    <style name="SiteSheetIcon">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:layout_marginBottom">7dp</item>
+        <item name="android:background">@drawable/selector_control_sheet_button</item>
+        <item name="android:focusable">true</item>
+        <item name="android:focusableInTouchMode">true</item>
+        <item name="android:padding">7dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:tint">@color/white</item>
     </style>
 
 </resources>

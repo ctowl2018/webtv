@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.setting;
 
+import android.content.SharedPreferences;
 import android.text.TextUtils;
 
 import androidx.media3.ui.danmaku.DanmakuConfig;
@@ -8,6 +9,15 @@ import com.fongmi.android.tv.api.config.VodConfig;
 import com.github.catvod.utils.Prefers;
 
 public class DanmakuSetting {
+
+    //内置弹幕接口地址留空，由用户在设置中自行配置。
+    private static final String DEFAULT_API_URL = "";
+
+    //（旧版内置地址已停用，留空避免误用）
+    private static final String LEGACY_API_URL = "";
+
+    //首次安装/升级时把弹幕开关落盘成显式值，避免继续依赖取值默认值
+    private static final String KEY_DEFAULTS_APPLIED = "danmaku_defaults_v1";
 
     private static final float MIN_TEXT_SCALE = 0.5f;
     private static final float MAX_TEXT_SCALE = 3.0f;
@@ -36,8 +46,28 @@ public class DanmakuSetting {
     private static final int MIN_MAX_FIXED_LINES = 0;
     private static final int MAX_MAX_FIXED_LINES = 10;
 
+    /**
+     * 把「弹幕加载 / 弹幕显示 / 自动搜索 / 爬虫优先」的开关在首次运行时写入本地配置。
+     * <p>
+     * 这些开关的语义是默认开启，但此前只靠 SharedPreferences 的取值默认值生效：
+     * 历史版本里 danmaku_auto 的默认值曾是 false，界面显示「已开启」，
+     * 而 DanmakuApi.canSearch() 判定为假，首次安装后从不发起弹幕搜索，
+     * 必须在设置里把开关关开一次写入显式值才恢复正常。
+     * 这里只补写缺失的键，不会覆盖用户已有的选择。
+     */
+    public static void ensureDefaults() {
+        if (Prefers.getBoolean(KEY_DEFAULTS_APPLIED, false)) return;
+        SharedPreferences prefers = Prefers.getPrefers();
+        if (!prefers.contains("danmaku_load")) putLoad(true);
+        if (!prefers.contains("danmaku_show")) putShow(true);
+        if (!prefers.contains("danmaku_auto")) putAuto(true);
+        if (!prefers.contains("danmaku_spider_first")) putSpiderFirst(true);
+        Prefers.put(KEY_DEFAULTS_APPLIED, true);
+    }
+
     public static boolean isLoad() {
-        return Prefers.getBoolean("danmaku_load");
+        //弹幕默认开启：首次启动无偏好值时按启用处理
+        return Prefers.getBoolean("danmaku_load", true);
     }
 
     public static void putLoad(boolean danmakuLoad) {
@@ -55,7 +85,10 @@ public class DanmakuSetting {
     }
 
     public static boolean isAuto() {
-        return Prefers.getBoolean("danmaku_auto");
+        //自动加载默认开启：与 isLoad()/isShow() 的默认值保持一致。
+        //DanmakuApi.canSearch() 要求 load && auto 同时为真，此前 auto 默认 false，
+        //导致首次安装后「弹幕加载」显示开启、实际却从不发起搜索。
+        return Prefers.getBoolean("danmaku_auto", true);
     }
 
     public static void putAuto(boolean auto) {
@@ -63,7 +96,8 @@ public class DanmakuSetting {
     }
 
     public static boolean isSpiderFirst() {
-        return Prefers.getBoolean("danmaku_spider_first");
+        //爬虫优先默认开启：点播源自带弹幕优先于在线接口结果
+        return Prefers.getBoolean("danmaku_spider_first", true);
     }
 
     public static void putSpiderFirst(boolean spiderFirst) {
@@ -71,7 +105,14 @@ public class DanmakuSetting {
     }
 
     public static String getApiUrl() {
-        return Prefers.getString("danmaku_api_url", "");
+        //弹幕接口默认值：内置公共接口，设置页可改
+        String url = Prefers.getString("danmaku_api_url", DEFAULT_API_URL);
+        if (LEGACY_API_URL.equals(url)) {
+            //迁移：存的是旧内置地址（没有真正自定义过）→ 换成新的内置地址
+            putApiUrl(DEFAULT_API_URL);
+            return DEFAULT_API_URL;
+        }
+        return url;
     }
 
     public static void putApiUrl(String url) {
@@ -303,9 +344,13 @@ public class DanmakuSetting {
     }
 
     public static String getEffectiveApiUrl() {
-        String userUrl = getApiUrl();
+        //优先级：用户手动填写 > 点播源配置里的 danmaku > 内置默认接口
+        String userUrl = Prefers.getString("danmaku_api_url", "");
+        if (LEGACY_API_URL.equals(userUrl)) userUrl = DEFAULT_API_URL;
         if (!TextUtils.isEmpty(userUrl)) return userUrl;
-        return VodConfig.get().getConfig().getDanmaku();
+        String configUrl = VodConfig.get().getConfig().getDanmaku();
+        if (!TextUtils.isEmpty(configUrl)) return configUrl;
+        return DEFAULT_API_URL;
     }
 
     public static void resetAppearance() {

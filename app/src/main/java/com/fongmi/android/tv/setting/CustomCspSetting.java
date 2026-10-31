@@ -332,12 +332,13 @@ public class CustomCspSetting {
     }
 
     public static Item createDefaultItem() {
+        //WebHome 已移除：新建条目默认为通用 CSP（api/脚本留空由用户填写）
         Item item = new Item();
         item.setId("local_" + System.currentTimeMillis() + "_" + Long.toHexString(System.nanoTime()));
         item.setKey(PREFIX + item.getId());
-        item.setWebHome(true);
+        item.setKind(KIND_CSP);
         item.setType(3);
-        item.setApi(API_BUILTIN);
+        item.setApi("");
         return item;
     }
 
@@ -385,6 +386,7 @@ public class CustomCspSetting {
             for (Item item : items) {
                 String oldKey = item.peekKey();
                 item.normalize();
+                item.disableLegacyWebHome();
                 item.ensureUniqueKey(keys);
                 if (!TextUtils.isEmpty(oldKey) && oldKey.equals(homeKey) && !oldKey.equals(item.getKey())) homeKey = item.getKey();
                 if (!ids.add(item.getId())) continue;
@@ -535,8 +537,23 @@ public class CustomCspSetting {
         }
 
         public boolean isWebHome() {
+            //WebHome 已从构建中移除：任何条目都不再按“网页首页”模式运行。
+            //历史条目的识别与降级见 isLegacyWebHome() / disableLegacyWebHome()。
+            return false;
+        }
+
+        //仅用于迁移：识别旧版本遗留的 WebHome 条目（kind=webHome / webHome=true / 内置 api + homePage）
+        public boolean isLegacyWebHome() {
             if (isLive()) return false;
             return KIND_WEB_HOME.equals(kind) || (webHome != null && webHome) || isWebHomeByFields();
+        }
+
+        //把遗留 WebHome 条目降级为普通（禁用）条目，避免出现已不存在的模式与空 api 站点
+        void disableLegacyWebHome() {
+            if (!isLegacyWebHome()) return;
+            enabled = false;
+            kind = KIND_CSP;
+            webHome = false;
         }
 
         private boolean isWebHomeByFields() {
@@ -557,7 +574,7 @@ public class CustomCspSetting {
 
         public String getKind() {
             normalizeKind();
-            return isLive() ? KIND_LIVE : isWebHome() ? KIND_WEB_HOME : KIND_CSP;
+            return isLive() ? KIND_LIVE : KIND_CSP;
         }
 
         public boolean isValid() {

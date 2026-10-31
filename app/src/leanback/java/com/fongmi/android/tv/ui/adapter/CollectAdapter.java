@@ -80,6 +80,9 @@ public class CollectAdapter extends RecyclerView.Adapter<CollectAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Collect item = mItems.get(position);
         holder.binding.text.getLayoutParams().width = ResUtil.dp2px(160);
+        //与右侧海报的影片名视觉等大：片名是白底深字、这里是深底亮字，
+        //同字号时亮字会显大，因此压到 14sp 让两者看起来一致
+        holder.binding.text.setTextSize(14);
         holder.binding.text.setSingleLine(true);
         holder.binding.text.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
         holder.binding.text.setMarqueeRepeatLimit(-1);

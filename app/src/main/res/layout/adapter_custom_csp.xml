@@ -130,21 +130,6 @@
         app:singleSelection="true">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/webHomeMode"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:minHeight="40dp"
-            android:minWidth="0dp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:text="@string/setting_custom_csp_webhome"
-            android:textColor="@color/dialog_toggle_button_text"
-            app:backgroundTint="@color/dialog_toggle_button_bg"
-            app:strokeColor="@color/dialog_outlined_button_stroke" />
-
-        <com.google.android.material.button.MaterialButton
             android:id="@+id/cspMode"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="0dp"

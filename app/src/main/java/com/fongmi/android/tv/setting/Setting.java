@@ -304,13 +304,6 @@ public class Setting {
         Prefers.put("drive_check", driveCheck);
     }
 
-    public static boolean isWebHomeFullscreen() {
-        return Prefers.getBoolean("web_home_fullscreen", true);
-    }
-
-    public static void putWebHomeFullscreen(boolean fullscreen) {
-        Prefers.put("web_home_fullscreen", fullscreen);
-    }
 
     public static boolean isPlaybackArtworkWall() {
         return Prefers.getBoolean("playback_artwork_wall", true);
@@ -379,7 +372,7 @@ public class Setting {
     }
 
     public static String getLanguage() {
-        return DisplaySettings.normalizeLanguage(Prefers.getString("language", DisplaySettings.LANGUAGE_ENGLISH));
+        return DisplaySettings.normalizeLanguage(Prefers.getString("language", DisplaySettings.LANGUAGE_SIMPLIFIED));
     }
 
     public static void putLanguage(String language) {
@@ -401,9 +394,8 @@ public class Setting {
     }
 
     private static void applyLanguage(String language) {
-        if (DisplaySettings.LANGUAGE_SIMPLIFIED.equals(language)) Trans.setTraditional(false);
-        else if (DisplaySettings.LANGUAGE_TRADITIONAL.equals(language)) Trans.setTraditional(true);
-        else Trans.setTraditional(null);
+        //只保留简体中文，繁体转换始终关闭
+        Trans.setTraditional(false);
     }
 
     public static Context wrapLanguage(Context context) {
@@ -469,14 +461,6 @@ public class Setting {
 
     public static void putSiteHealthDialogSort(boolean sort) {
         Prefers.put("site_health_dialog_sort", sort);
-    }
-
-    public static boolean isWebHomeExtension() {
-        return Prefers.getBoolean("web_home_extension", true);
-    }
-
-    public static void putWebHomeExtension(boolean extension) {
-        Prefers.put("web_home_extension", extension);
     }
 
     public static boolean isDebugLog() {

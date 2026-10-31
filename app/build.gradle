@@ -18,9 +18,15 @@ if (gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }
 // locate the commit that produced that build, so the APK now records its own provenance.
 def gitOutput = { List<String> args ->
     try {
-        def process = args.execute(null, rootProject.file('.'))
+        //合并 stderr 并先读完输出再 waitFor：工作区改动很多时 git 会把告警写到 stderr，
+        //先 waitFor 再读 stdout 会因管道缓冲写满而死锁，导致配置阶段卡住。
+        def process = new ProcessBuilder(args.collect { it.toString() })
+                .directory(rootProject.file('.'))
+                .redirectErrorStream(true)
+                .start()
+        def text = process.inputStream.getText('UTF-8')
         process.waitFor()
-        process.exitValue() == 0 ? process.text.trim() : 'unknown'
+        process.exitValue() == 0 ? text.trim() : 'unknown'
     } catch (Exception ignored) {
         'unknown'
     }
@@ -35,7 +41,7 @@ android {
     compileSdk libs.versions.compileSdk.get().toInteger()
 
     defaultConfig {
-        applicationId "com.fongmi.android.tv"
+        applicationId "com.fongmi.android.newtv"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
         versionCode 720
@@ -44,7 +50,8 @@ android {
         buildConfigField "String", "GIT_REVISION", "\"${gitRevision}\""
         buildConfigField "String", "GIT_STATE", "\"${gitDirty}\""
         buildConfigField "String", "BUILD_TIME", "\"${buildTime}\""
-        resConfigs "en", "zh-rCN", "zh-rTW"
+        //仅保留简体中文：不再产出 en / zh-rTW 资源，任何系统语言下都走中文资源
+        resConfigs "zh-rCN"
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = ["room.schemaLocation": "$projectDir/schemas".toString()]
@@ -61,11 +68,12 @@ android {
         mobile {
             dimension "mode"
         }
-        //完整版：全部能力。lite 精简版见下方 lite flavor 说明。
+        //完整版：MPV + EXO + IJK 全内核。Python 运行时在本构建中被剥离，
+        //FEATURE_PYTHON 因此固定为 false（原始模板中此处为 true）。
         full {
             dimension "edition"
             buildConfigField "boolean", "FEATURE_MPV", "true"
-            buildConfigField "boolean", "FEATURE_PYTHON", "true"
+            buildConfigField "boolean", "FEATURE_PYTHON", "false"
         }
         //精简版：去掉 MPV 内核(约37MB)与 Python 运行时(约21MB)，保留 EXO/IJK 双内核与全部源协议。
         lite {
@@ -95,6 +103,15 @@ android {
     buildFeatures {
         buildConfig = true
         viewBinding = true
+    }
+
+    // Python 剥离：:chaquo 不再参与构建，main 源集里的 PyLoader 仍 import com.fongmi.chaquo.Loader/Spider。
+    // 这里把 lite 源集里的编译桩（空实现、优雅降级）复用给 full 变体，保证既不打包任何 Python
+    // 运行时 / .py 资源，又能正常编译。若将来恢复完整版，删除本段并恢复 fullImplementation project(':chaquo')。
+    sourceSets {
+        full {
+            java.srcDirs += "src/lite/java"
+        }
     }
 
     signingConfigs {
@@ -171,7 +188,8 @@ androidComponents {
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.aar"])
     implementation project(':catvod')
-    fullImplementation project(':chaquo')
+    // Python 运行时模块已从构建中移除（见 settings.gradle / 上方 sourceSets 注释）
+    // fullImplementation project(':chaquo')
     implementation project(':quickjs')
     implementation libs.appcompat
     implementation libs.lifecycle.service
@@ -183,7 +201,6 @@ dependencies {
     implementation libs.splashscreen
     implementation libs.swiperefreshlayout
     implementation libs.viewpager2
-    implementation libs.webkit
     implementation libs.android.gif.drawable
     implementation libs.bundles.glide
     implementation libs.bundles.jupnp

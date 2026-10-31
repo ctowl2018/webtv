@@ -120,7 +120,7 @@ public final class AppBackup {
             }
             String warningText = warning.toString();
             byte[] data = backup.toString().getBytes(StandardCharsets.UTF_8);
-            byte[] manifest = manifest(shared, login, customCspSourceFiles, customCspFiles, backup.getWebHomeExtensionPreferenceCount(), backup.getWebHomeExtensionSourceCount(), warningText).getBytes(StandardCharsets.UTF_8);
+            byte[] manifest = manifest(shared, login, customCspSourceFiles, customCspFiles, warningText).getBytes(StandardCharsets.UTF_8);
             long total = data.length + manifest.length + appFilesSize(Path.files(), Path.files());
             if (shared != null) total += shared.getFile().length();
             if (login != null) total += login.getFile().length();
@@ -218,7 +218,7 @@ public final class AppBackup {
                 SpiderDebug.log("backup", "login restore warning error=%s", e.getMessage());
             }
             notifyProgress(progress, "恢复数据库和设置", 85, sourceSize, sourceSize);
-            backup.restore(true);
+            backup.restore();
             reload();
             if (restoreWarning.length() > 0) restoreWarning.append("，其余可用数据已恢复");
             String warningText = restoreWarning.toString();
@@ -256,10 +256,9 @@ public final class AppBackup {
         RefreshEvent.keep();
         RefreshEvent.history();
         RefreshEvent.home();
-        Backup.refreshWebHomeExtensions();
     }
 
-    private static String manifest(SyncFiles.Archive shared, LoginStateSync.Archive login, int customCspSourceFiles, int customCspFiles, int webHomeExtensionPrefs, int webHomeExtensionSources, String warning) {
+    private static String manifest(SyncFiles.Archive shared, LoginStateSync.Archive login, int customCspSourceFiles, int customCspFiles, String warning) {
         JsonObject object = new JsonObject();
         object.addProperty("app", "WebHTV");
         object.addProperty("version", 3);
@@ -268,8 +267,6 @@ public final class AppBackup {
         object.addProperty("loginStateFiles", login == null ? 0 : login.getCount());
         object.addProperty("customCspSourceFiles", customCspSourceFiles);
         object.addProperty("customCspFiles", customCspFiles);
-        object.addProperty("webHomeExtensionPrefs", webHomeExtensionPrefs);
-        object.addProperty("webHomeExtensionSources", webHomeExtensionSources);
         object.addProperty("warning", warning == null ? "" : warning);
         return App.gson().toJson(object);
     }
@@ -292,10 +289,6 @@ public final class AppBackup {
         } catch (Throwable e) {
             appendWarning(warning, "站点注入文件无法校验");
         }
-        int expectedWebHomePrefs = integer(object, "webHomeExtensionPrefs");
-        if (backup.getWebHomeExtensionPreferenceCount() < expectedWebHomePrefs) appendWarning(warning, "WebHome 扩展配置不完整");
-        int expectedWebHomeSources = integer(object, "webHomeExtensionSources");
-        if (backup.getWebHomeExtensionSourceCount() < expectedWebHomeSources) appendWarning(warning, "WebHome 扩展源不完整");
         if (warning.length() > 0) SpiderDebug.log("backup", "restore manifest warning=%s", warning);
         return warning.toString();
     }

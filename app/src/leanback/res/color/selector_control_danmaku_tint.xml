@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  弹幕按钮专用着色：开关状态由图标本身（勾/斜线）表达，不再用黄色区分，
+  否则开启且未聚焦时整排图标里只有它是黄的，和周边白色 70% 的图标割裂。
+  这里只保留“聚焦=纯白 / 未聚焦=白 70%”，与相邻按钮完全一致。
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/white" android:state_focused="true" />
+    <item android:color="@color/white_70" />
+</selector>

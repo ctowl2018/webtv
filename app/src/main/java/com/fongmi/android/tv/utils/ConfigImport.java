@@ -55,7 +55,7 @@ public class ConfigImport {
         int liveCount = Json.safeListElement(object, "lives").size();
         String name = !TextUtils.isEmpty(config.getName()) ? config.getName() : Json.safeString(object, "notice");
         if (TextUtils.isEmpty(name)) name = Json.safeString(object, "home");
-        return Preview.success(config.getType(), config.getUrl(), TextUtils.isEmpty(name) ? "点播配置" : name, siteCount, liveCount, !Json.safeString(object, "logo").isEmpty(), hasHomePage(object), false, siteCount > 0 ? "导入后可直接使用" : "配置可解析，但未发现站点");
+        return Preview.success(config.getType(), config.getUrl(), TextUtils.isEmpty(name) ? "点播配置" : name, siteCount, liveCount, !Json.safeString(object, "logo").isEmpty(), false, false, siteCount > 0 ? "导入后可直接使用" : "配置可解析，但未发现站点");
     }
 
     private static Preview previewLive(Config config) throws Throwable {
@@ -81,17 +81,6 @@ public class ConfigImport {
         return Preview.success(config.getType(), url, label, 1, 0, false, false, false, "导入后将直接用于壁纸");
     }
 
-    private static boolean hasHomePage(JsonObject object) {
-        for (var element : Json.safeListElement(object, "sites")) {
-            if (!element.isJsonObject()) continue;
-            JsonObject site = element.getAsJsonObject();
-            if (!Json.safeString(site, "homePage").isEmpty()) return true;
-            if (!Json.safeString(site, "home_page").isEmpty()) return true;
-            if (!Json.safeString(site, "webHome").isEmpty()) return true;
-            if (!Json.safeString(site, "web_home").isEmpty()) return true;
-        }
-        return false;
-    }
 
     public record Preview(int type, String url, String title, int primaryCount, int secondaryCount, boolean hasLogo, boolean hasHomePage, boolean depot, boolean valid, String summary) {
         public static Preview empty(int type) {

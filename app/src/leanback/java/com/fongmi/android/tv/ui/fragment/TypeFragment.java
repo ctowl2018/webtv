@@ -32,6 +32,7 @@ import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.ui.activity.CollectActivity;
 import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.ui.base.BaseFragment;
+import com.fongmi.android.tv.ui.base.TypeHost;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
 import com.fongmi.android.tv.ui.custom.CustomScroller;
 import com.fongmi.android.tv.ui.custom.CustomSelector;
@@ -46,6 +47,10 @@ import java.util.HashMap;
 import java.util.List;
 
 public class TypeFragment extends BaseFragment implements CustomScroller.Callback, VodPresenter.OnClickListener, SwipeRefreshLayout.OnRefreshListener {
+
+    //内容行行距 / 过滤器行行距（dp）
+    private static final int CONTENT_ROW_SPACING = 16;
+    private static final int FILTER_ROW_SPACING = 6;
 
     private HashMap<String, String> mExtends;
     private FragmentTypeBinding mBinding;
@@ -89,6 +94,10 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         return (HashMap<String, String>) getArguments().getSerializable("extend");
     }
 
+    private int getTypeBarId() {
+        return getActivity() instanceof TypeHost ? ((TypeHost) getActivity()).getTypeBarId() : R.id.recycler;
+    }
+
     private List<Filter> getFilter() {
         return Cache.copy(getTypeId());
     }
@@ -130,8 +139,9 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         selector.addPresenter(ListRow.class, new CustomRowPresenter(16), VodPresenter.class);
         selector.addPresenter(ListRow.class, new CustomRowPresenter(8, FocusHighlight.ZOOM_FACTOR_NONE, HorizontalGridView.FOCUS_SCROLL_ALIGNED), FilterPresenter.class);
         mBinding.recycler.setAdapter(new ItemBridgeAdapter(mAdapter = new ArrayObjectAdapter(selector)));
-        mBinding.recycler.setHeader(getActivity(), R.id.recycler);
-        mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(16));
+        //导航网格由宿主提供：分类页是 R.id.recycler，首页分页里是 R.id.typeRecycler
+        mBinding.recycler.setHeader(getActivity(), getTypeBarId());
+        mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(CONTENT_ROW_SPACING));
     }
 
     private void setViewModel() {
@@ -222,12 +232,20 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     private void showFilter() {
         List<ListRow> rows = new ArrayList<>();
         for (Filter filter : mFilters) rows.add(getRow(filter));
+        //先告诉网格“顶部多了几行非内容行”，首行/返回键的判定才不会落在过滤器行上
+        mBinding.recycler.setHeaderOffset(rows.size());
+        //过滤器展开时行距收紧，避免多层级过滤器之间空隙过大
+        mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(FILTER_ROW_SPACING));
         mBinding.recycler.postDelayed(() -> mBinding.recycler.scrollToPosition(0), 48);
         mAdapter.addAll(0, rows);
+        mBinding.recycler.showHeader();
     }
 
     private void hideFilter() {
         mAdapter.removeItems(0, mFilters.size());
+        mBinding.recycler.setHeaderOffset(0);
+        mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(CONTENT_ROW_SPACING));
+        mBinding.recycler.showHeader();
     }
 
     public void toggleFilter(boolean visible) {
@@ -278,21 +296,31 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
-        if (hidden) {
-            mBinding.recycler.showHeader();
-        } else {
-            if (headerVisible) mBinding.recycler.showHeader();
-            else mBinding.recycler.hideHeader();
-            mBinding.recycler.requestFocus();
-        }
+        //导航栏常驻，不再随内容显隐切换
+        mBinding.recycler.showHeader();
+        if (!hidden) mBinding.recycler.requestFocus();
+    }
+
+    /** 给定焦点是否落在内容列表里 */
+    public boolean isInContent(View focus) {
+        if (mBinding == null || focus == null) return false;
+        return mBinding.recycler.findContainingViewHolder(focus) != null;
+    }
+
+    /** 告知内容网格：导航应聚焦第几项（见 VodActivity#syncSelectedType） */
+    public void setNavSelected(int position) {
+        if (mBinding != null) mBinding.recycler.setHeaderSelectedPosition(position);
     }
 
     public boolean requestContentFocus() {
         if (mBinding == null || !mBinding.progressLayout.isContent() || mAdapter == null || mAdapter.size() == 0) return false;
+        //优先回到上一次停留的那张海报（导航按「下」不该永远跳回第一张）
+        if (mBinding.recycler.requestLastFocus()) return true;
         View child = mBinding.recycler.getFocusedChild();
         if (child == null && mBinding.recycler.getChildCount() > 0) child = mBinding.recycler.getChildAt(0);
         if (child != null) return child.requestFocus();
         return mBinding.recycler.requestFocus();
     }
+
 
 }

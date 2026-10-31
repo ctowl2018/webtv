@@ -9,6 +9,7 @@ import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.bean.Danmaku;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.setting.DanmakuSetting;
+import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Trans;
 
@@ -24,7 +25,11 @@ public class DanmakuApi {
     private static final DanmakuSearchGeneration GENERATIONS = new DanmakuSearchGeneration();
 
     public static boolean canSearch() {
-        return DanmakuSetting.isLoad() && DanmakuSetting.isAuto() && !TextUtils.isEmpty(DanmakuSetting.getEffectiveApiUrl());
+        boolean load = DanmakuSetting.isLoad();
+        boolean auto = DanmakuSetting.isAuto();
+        String url = DanmakuSetting.getEffectiveApiUrl();
+        SpiderDebug.log("danmaku", "canSearch load=%s auto=%s url=%s", load, auto, url);
+        return load && auto && !TextUtils.isEmpty(url);
     }
 
     public static Call newCall(String name, String episode) {
@@ -52,11 +57,20 @@ public class DanmakuApi {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) {
                 try {
-                    Danmaku.arrayFrom(response.body().string()).stream().findFirst().ifPresent(item -> App.post(() -> {
-                        if (GENERATIONS.isCurrent(token, currentContext.get())) found.accept(item);
+                    String body = response.body().string();
+                    Danmaku.arrayFrom(body).stream().findFirst().ifPresent(item -> App.post(() -> {
+                        boolean current = GENERATIONS.isCurrent(token, currentContext.get());
+                        SpiderDebug.log("danmaku", "search resp code=%s len=%s current=%s url=%s", response.code(), body.length(), current, item.getUrl());
+                        if (current) found.accept(item);
                     }));
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    SpiderDebug.log("danmaku", e);
                 }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull java.io.IOException e) {
+                SpiderDebug.log("danmaku", e);
             }
         });
     }

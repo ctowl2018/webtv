@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -52,7 +53,11 @@ public class Notify {
     }
 
     public static void show(String text) {
-        if (!TextUtils.isEmpty(text)) get().makeText(text);
+        if (TextUtils.isEmpty(text)) return;
+        //全局统一提示：黑底 + 三角图标的独立提示窗（见 Tip）；播放页整体关闭提示（避免压住控制条），
+        //只有在没有前台 Activity（例如启动早期）时才退回系统 Toast。
+        if (Tip.show(text)) return;
+        get().makeText(text);
     }
 
     public static void progress(Context context) {

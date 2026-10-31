@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  分类导航里的「首页」项：与 adapter_type.xml 的分类项放在同一个 HorizontalGridView 里，
+  因此排列、对齐、间距（16dp）、行高、胶囊样式全部由同一个容器统一决定，不再单独占位。
+  样式复用 HomeNavChip（与分类项同一套 selector_item_round + 16sp + 8dp/14dp 内边距）。
+-->
+<com.google.android.material.textview.MaterialTextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/navHome"
+    style="@style/HomeNavChip"
+    android:drawableStart="@drawable/ic_setting_home"
+    android:nextFocusDown="@id/recycler"
+    android:text="@string/home_home" />

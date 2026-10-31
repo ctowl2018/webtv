@@ -15,7 +15,6 @@ import com.fongmi.android.tv.impl.SpeedListener;
 import com.fongmi.android.tv.impl.UaListener;
 import com.fongmi.android.tv.player.mpv.MpvConfigStore;
 import com.fongmi.android.tv.setting.PlaybackPerformanceSetting;
-import com.fongmi.android.tv.setting.PlayerButtonSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
 import com.fongmi.android.tv.setting.PreloadSetting;
 import com.fongmi.android.tv.setting.Setting;
@@ -23,7 +22,6 @@ import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.dialog.BufferDialog;
 import com.fongmi.android.tv.ui.dialog.MpvConfigDialog;
 import com.fongmi.android.tv.ui.dialog.PlaybackPerformanceDialog;
-import com.fongmi.android.tv.ui.dialog.PlayerButtonConfigDialog;
 import com.fongmi.android.tv.ui.dialog.PlayerOsdDialog;
 import com.fongmi.android.tv.ui.dialog.PreloadDialog;
 import com.fongmi.android.tv.ui.dialog.SpeedDialog;
@@ -63,7 +61,6 @@ public class SettingPlayerActivity extends BaseActivity implements UaListener, B
         mBinding.kernel.requestFocus();
         mBinding.uaText.setText(Setting.getUa());
         mBinding.osdText.setText(getOsdText(ResUtil.getStringArray(R.array.select_player_osd)));
-        mBinding.playerButtonsText.setText(getString(R.string.player_button_config_summary, PlayerButtonSetting.getVisibleCount(), PlayerButtonSetting.getTotalCount()));
         mBinding.aacText.setText(getSwitch(PlayerSetting.isPreferAAC()));
         mBinding.tunnelText.setText(getSwitch(PlayerSetting.isTunnel()));
         mBinding.adblockText.setText(getSwitch(Setting.isAdblock()));
@@ -89,7 +86,6 @@ public class SettingPlayerActivity extends BaseActivity implements UaListener, B
     @Override
     protected void initEvent() {
         mBinding.osd.setOnClickListener(this::onOsd);
-        mBinding.playerButtons.setOnClickListener(view -> PlayerButtonConfigDialog.show(this, this::setPlayerButtonsText));
         mBinding.mpvConfig.setOnClickListener(view -> MpvConfigDialog.show(this, () -> mBinding.mpvConfigText.setText(MpvConfigStore.summary())));
         mBinding.kernel.setOnClickListener(this::setKernel);
         mBinding.ua.setOnClickListener(this::onUa);
@@ -149,7 +145,6 @@ public class SettingPlayerActivity extends BaseActivity implements UaListener, B
     }
 
     private void setPlayerButtonsText() {
-        mBinding.playerButtonsText.setText(getString(R.string.player_button_config_summary, PlayerButtonSetting.getVisibleCount(), PlayerButtonSetting.getTotalCount()));
     }
 
     private String getOsdText(String[] items) {

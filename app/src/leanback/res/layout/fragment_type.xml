@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  clipChildren/clipToPadding 全部关掉：海报获得焦点时会放大，放大后的边缘会超出列表自身边界，
+  若这里按默认裁剪，第一行海报的顶部就会被切掉（看起来像“被导航栏遮住”）。
+-->
 <androidx.swiperefreshlayout.widget.SwipeRefreshLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/swipeLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
     <com.fongmi.android.tv.ui.custom.ProgressLayout
         android:id="@+id/progressLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
         <com.fongmi.android.tv.ui.custom.CustomVerticalGridView
             android:id="@+id/recycler"
@@ -17,7 +25,7 @@
             android:clipChildren="false"
             android:clipToPadding="false"
             android:paddingStart="24dp"
-            android:paddingTop="16dp"
+            android:paddingTop="6dp"
             android:paddingEnd="24dp"
             android:paddingBottom="24dp"
             app:focusOutEnd="true"

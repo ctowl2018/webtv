@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 全局提示条（tips）：黑底 + 无黑底背景的三角图标 + 白色文字。
+     播放页 <include> 进 activity_video（显示在控制条上方），其它页面由 Notify 用它做自定义 Toast。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/shape_app_tip"
+    android:elevation="6dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="18dp"
+    android:paddingTop="11dp"
+    android:paddingEnd="22dp"
+    android:paddingBottom="11dp">
+
+    <ImageView
+        android:id="@+id/tipIcon"
+        android:layout_width="18dp"
+        android:layout_height="21dp"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_tip_triangle" />
+
+    <TextView
+        android:id="@+id/tipText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:ellipsize="end"
+        android:maxWidth="640dp"
+        android:maxLines="3"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        tools:text="弹幕已开启" />
+
+</LinearLayout>

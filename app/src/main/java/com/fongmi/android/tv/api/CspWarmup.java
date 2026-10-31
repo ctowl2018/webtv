@@ -113,7 +113,6 @@ public final class CspWarmup {
         for (Site site : VodConfig.get().getSites()) {
             if (!isWarmable(site)) continue;
             if (fallback == null) fallback = site;
-            if (!site.hasHomePage()) return site;
         }
         return fallback;
     }

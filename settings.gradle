@@ -23,6 +23,9 @@ dependencyResolutionManagement {
 
 include ':app'
 include ':catvod'
-include ':chaquo'
+// Python (Chaquopy) runtime module is intentionally NOT included in this build:
+// the goal is a Python-free APK, and excluding the project keeps Chaquopy's
+// pip / buildPython steps (which need a host Python 3.10) out of the build graph.
+// include ':chaquo'
 include ':quickjs'
 rootProject.name = "TV"

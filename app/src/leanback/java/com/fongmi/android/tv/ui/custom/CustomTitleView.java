@@ -14,12 +14,9 @@ import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.impl.SiteListener;
-import com.fongmi.android.tv.setting.SiteBlockSetting;
 import com.fongmi.android.tv.utils.KeyUtil;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.google.android.material.textview.MaterialTextView;
-
-import java.util.List;
 
 public class CustomTitleView extends MaterialTextView {
 
@@ -50,7 +47,8 @@ public class CustomTitleView extends MaterialTextView {
     }
 
     private boolean hasEvent(KeyEvent event) {
-        return !getHome().isEmpty() && (KeyUtil.isLeftKey(event) || KeyUtil.isRightKey(event) || (KeyUtil.isUpKey(event) && !coolDown));
+        //不再用左右键切换源：方向键必须留给焦点移动，否则遥控器无法从标题走位到搜索/收藏/设置图标。
+        return !getHome().isEmpty() && KeyUtil.isUpKey(event) && !coolDown;
     }
 
     @Override
@@ -69,28 +67,12 @@ public class CustomTitleView extends MaterialTextView {
 
     private void onKeyDown(KeyEvent event) {
         if (KeyUtil.isActionDown(event) && KeyUtil.isUpKey(event)) onKeyUp();
-        else if (KeyUtil.isActionDown(event) && KeyUtil.isLeftKey(event)) listener.setSite(getSite(false));
-        else if (KeyUtil.isActionDown(event) && KeyUtil.isRightKey(event)) listener.setSite(getSite(true));
     }
 
     private void onKeyUp() {
         App.post(() -> coolDown = false, 3000);
         listener.onRefresh();
         coolDown = true;
-    }
-
-    private Site getSite(boolean next) {
-        List<Site> items = getSites();
-        if (items.isEmpty()) return new Site();
-        int position = items.indexOf(getHome());
-        if (position < 0) position = 0;
-        if (next) position = (position + 1) % items.size();
-        else position = (position - 1 + items.size()) % items.size();
-        return items.get(position);
-    }
-
-    private List<Site> getSites() {
-        return SiteBlockSetting.filter(VodConfig.get().getSites(), false);
     }
 
     public interface Listener extends SiteListener {

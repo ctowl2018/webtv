@@ -11,7 +11,6 @@ import androidx.viewbinding.ViewBinding;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.BuildConfig;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
@@ -20,7 +19,6 @@ import com.fongmi.android.tv.bean.Live;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.databinding.FragmentSettingBinding;
 import com.fongmi.android.tv.db.AppDatabase;
-import com.fongmi.android.tv.db.BackupManager;
 import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.Callback;
@@ -34,13 +32,9 @@ import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.activity.ConfigCenterActivity;
 import com.fongmi.android.tv.ui.activity.HomeActivity;
 import com.fongmi.android.tv.ui.base.BaseFragment;
-import com.fongmi.android.tv.ui.dialog.AboutDialog;
-import com.fongmi.android.tv.ui.dialog.CodecCapabilityDialog;
 import com.fongmi.android.tv.ui.dialog.ConfigDialog;
 import com.fongmi.android.tv.ui.dialog.HistoryDialog;
 import com.fongmi.android.tv.ui.dialog.LiveDialog;
-import com.fongmi.android.tv.ui.dialog.RestoreDialog;
-import com.fongmi.android.tv.ui.dialog.SiteBlockDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
 import com.fongmi.android.tv.utils.ConfigImport;
 import com.fongmi.android.tv.utils.FileUtil;
@@ -132,17 +126,11 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         mBinding.language.setOnClickListener(this::setLanguage);
         mBinding.uiScale.setOnClickListener(this::setUiScale);
         mBinding.cache.setOnClickListener(this::onCache);
-        mBinding.backup.setOnClickListener(this::onBackup);
         mBinding.enhance.setOnClickListener(this::onEnhance);
         mBinding.player.setOnClickListener(this::onPlayer);
         mBinding.danmaku.setOnClickListener(this::onDanmaku);
         mBinding.recordSync.setOnClickListener(this::setRecordSync);
         mBinding.remotePublic.setOnClickListener(view -> RemoteSettingsDialog.show(requireActivity()));
-        mBinding.siteBlock.setOnClickListener(view -> SiteBlockDialog.show(requireActivity()));
-        mBinding.codec.setOnClickListener(view -> CodecCapabilityDialog.show(requireActivity(), null));
-        mBinding.about.setOnClickListener(view -> AboutDialog.show(requireActivity(), () -> Updater.create().force().start(requireActivity())));
-        mBinding.restore.setOnClickListener(this::onRestore);
-        mBinding.version.setOnClickListener(this::onVersion);
         mBinding.vod.setOnLongClickListener(this::onVodEdit);
         mBinding.vodHome.setOnClickListener(this::onVodHome);
         mBinding.live.setOnLongClickListener(this::onLiveEdit);
@@ -188,7 +176,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
     }
 
     private String previewMessage(ConfigImport.Preview preview) {
-        String extra = (preview.hasLogo() ? getString(R.string.dialog_config_preview_logo) : "") + (preview.hasHomePage() ? getString(R.string.dialog_config_preview_homepage) : "");
+        String extra = (preview.hasLogo() ? getString(R.string.dialog_config_preview_logo) : "");
         return switch (preview.type()) {
             case 0 -> getString(preview.depot() ? R.string.dialog_config_preview_depot : R.string.dialog_config_preview_vod, preview.primaryCount(), preview.depot() ? 0 : preview.secondaryCount(), preview.depot() ? "" : extra);
             case 1 -> getString(preview.depot() ? R.string.dialog_config_preview_depot : R.string.dialog_config_preview_live, preview.primaryCount());
@@ -304,10 +292,6 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
     }
 
 
-    private void onVersion(View view) {
-        Updater.create().force().start(requireActivity());
-    }
-
     private void setWallDefault(View view) {
         Setting.putWall(Setting.nextDefaultWall());
         Setting.putWallType(0);
@@ -379,37 +363,7 @@ public class SettingFragment extends BaseFragment implements ConfigListener, Sit
         });
     }
 
-    private void onBackup(View view) {
-        PermissionUtil.requestFile(this, allGranted -> BackupManager.backup(new Callback() {
-            @Override
-            public void success() {
-                Notify.show(R.string.backup_success);
-            }
-
-            @Override
-            public void error() {
-                Notify.show(R.string.backup_fail);
-            }
-        }));
-    }
-
-    private void onRestore(View view) {
-        PermissionUtil.requestFile(this, allGranted -> RestoreDialog.create().show(requireActivity(), new Callback() {
-            @Override
-            public void success() {
-                Notify.show(R.string.restore_success);
-                setOtherText();
-                initConfig();
-            }
-
-            @Override
-            public void error() {
-                Notify.show(R.string.restore_fail);
-            }
-        }));
-    }
-
-    private void initConfig() {
+            private void initConfig() {
         VodConfig.get().init().load(getCallback());
         LiveConfig.get().init().load();
         WallConfig.get().init().load();

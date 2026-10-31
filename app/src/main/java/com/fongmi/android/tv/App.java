@@ -17,11 +17,13 @@ import com.fongmi.android.tv.playback.PlaybackRemoteSyncer;
 import com.fongmi.android.tv.remote.RemoteAgent;
 import com.fongmi.android.tv.remote.RemoteStore;
 import com.fongmi.android.tv.server.Server;
+import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.ProxySetting;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.utils.LocalNetworkPermission;
 import com.fongmi.android.tv.utils.NsdDeviceDiscovery;
 import com.fongmi.android.tv.utils.Notify;
+import com.fongmi.android.tv.utils.Tip;
 import com.fongmi.android.tv.utils.PreviousProcessExitLogger;
 import com.fongmi.android.tv.utils.EpgReminder;
 import com.fongmi.hook.Hook;
@@ -101,6 +103,7 @@ public class App extends Application implements Application.ActivityLifecycleCal
         Prefers.remove("wall_color");
         Setting.restoreClassicGreenWall();
         Setting.applyLanguage();
+        DanmakuSetting.ensureDefaults();
         DebugLogStore.restoreEnabled();
         if (DebugLogStore.isEnabled()) {
             Setting.logDebugEnvironment("restore");
@@ -142,6 +145,8 @@ public class App extends Application implements Application.ActivityLifecycleCal
 
     @Override
     public void onActivityPaused(@NonNull Activity activity) {
+        //离开当前页时收回提示窗，避免提示跟着上一个界面留在屏幕上
+        Tip.dismiss();
         if (activity == activity()) this.activity = null;
     }
 

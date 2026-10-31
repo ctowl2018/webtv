@@ -351,7 +351,7 @@ public class CustomCspDialog extends BaseAlertDialog {
         if (now - lastAddTime < 500) return;
         lastAddTime = now;
         CustomCspSetting.Item item = CustomCspSetting.createDefaultItem();
-        item.setName(nextName(KIND_WEB_HOME));
+        item.setName(nextName(item.getKind()));
         adapter.add(item);
         binding.recycler.scrollToPosition(adapter.getItemCount() - 1);
     }
@@ -1016,7 +1016,7 @@ public class CustomCspDialog extends BaseAlertDialog {
                 autoKey = isAutoKey(item.getKey());
                 binding.enabled.setAlpha(item.isEnabled() ? 1.0f : 0.65f);
                 binding.enabled.setText(item.isEnabled() ? R.string.setting_enable : R.string.setting_disable);
-                binding.typeGroup.check(item.isLive() ? R.id.liveMode : item.isWebHome() ? R.id.webHomeMode : R.id.cspMode);
+                binding.typeGroup.check(item.isLive() ? R.id.liveMode : R.id.cspMode);
                 setText(binding.name, item.getName());
                 setText(binding.key, item.getKey());
                 setText(binding.type, String.valueOf(item.getType()));
@@ -1081,7 +1081,7 @@ public class CustomCspDialog extends BaseAlertDialog {
             private void onTypeChecked(int checkedId, boolean isChecked) {
                 if (bindingItem || item == null || !isChecked) return;
                 String oldKind = item.getKind();
-                String newKind = checkedId == R.id.liveMode ? KIND_LIVE : checkedId == R.id.webHomeMode ? KIND_WEB_HOME : KIND_CSP;
+                String newKind = checkedId == R.id.liveMode ? KIND_LIVE : KIND_CSP;
                 if (oldKind.equals(newKind)) return;
                 String oldHomeKey = item.isLive() ? "" : item.site().getKey();
                 item.setKind(newKind);

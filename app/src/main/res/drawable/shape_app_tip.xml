@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 全局提示条（tips）统一底色：纯黑 90% 不透明 + 10dp 圆角。
+     图标与文字都直接压在这层黑底上，不再让系统 Toast 的浅色气泡和图标卡片底出现。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#E6000000" />
+    <corners android:radius="10dp" />
+</shape>

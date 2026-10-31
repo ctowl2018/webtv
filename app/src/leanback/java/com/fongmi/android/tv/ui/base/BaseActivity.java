@@ -63,7 +63,8 @@ public abstract class BaseActivity extends AppCompatActivity {
     }
 
     protected boolean customWall() {
-        return true;
+        //全局改用纯深色背景：不再叠加壁纸层（壁纸设置项已从设置页移除）
+        return false;
     }
 
     protected void initView(Bundle savedInstanceState) {

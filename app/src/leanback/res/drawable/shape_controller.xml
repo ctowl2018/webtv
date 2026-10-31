@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  播放控制条背景：线性渐变（自下而上由深到浅），随控制条高度一起长高，仍贴屏幕底边。
+
+  方向：angle="90" 表示渐变方向由「底」指向「顶」，startColor 落在底边、endColor 落在顶边。
+    · startColor #BF000000 = 纯黑 75% 不透明度（0xBF/0xFF = 191/255 ≈ 75%），即 rgba(0,0,0,0.75)，最深色标。
+    · endColor   #00000000 = 完全透明，色相与过渡关系保持不变（纯黑→透明，只改了最深处的 alpha）。
+  色标只有一个过渡（黑→透明），把起点从 50% 提到 75% 不会产生断层，只是底部更实、文字更清楚。
+
+  若需要相反方向（顶部最深、底部透明）：把 angle 改为 270，并互换 start/end 两个颜色即可。
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
 
-    <solid android:color="?attr/colorSurface" />
-
-    <corners
-        android:topLeftRadius="28dp"
-        android:topRightRadius="28dp" />
+    <gradient
+        android:angle="90"
+        android:endColor="#00000000"
+        android:startColor="#BF000000"
+        android:type="linear" />
 
 </shape>

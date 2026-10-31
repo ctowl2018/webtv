@@ -2,6 +2,7 @@ package com.fongmi.android.tv.ui.fragment;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
@@ -14,7 +15,7 @@ import com.fongmi.android.tv.bean.Cache;
 import com.fongmi.android.tv.bean.Class;
 import com.fongmi.android.tv.bean.Filter;
 import com.fongmi.android.tv.databinding.FragmentFolderBinding;
-import com.fongmi.android.tv.ui.activity.VodActivity;
+import com.fongmi.android.tv.ui.base.TypeHost;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 
 import java.util.HashMap;
@@ -46,8 +47,9 @@ public class FolderFragment extends BaseFragment {
         return (TypeFragment) getChildFragmentManager().findFragmentById(R.id.container);
     }
 
-    private VodActivity getParent() {
-        return (VodActivity) getActivity();
+    /** 收起宿主页面上已展开的筛选：分类页与首页（分页）都实现了 TypeHost */
+    private void closeFilter() {
+        if (getActivity() instanceof TypeHost) ((TypeHost) getActivity()).closeFilter();
     }
 
     @Override
@@ -70,7 +72,7 @@ public class FolderFragment extends BaseFragment {
     public void openFolder(String typeId, HashMap<String, String> extend) {
         TypeFragment next = TypeFragment.newInstance(getKey(), typeId, mType.getStyle(), extend, mType.isFolder());
         FragmentTransaction ft = getChildFragmentManager().beginTransaction();
-        Optional.ofNullable(getParent()).ifPresent(VodActivity::closeFilter);
+        closeFilter();
         Optional.ofNullable(getChild()).ifPresent(ft::hide);
         ft.add(R.id.container, next);
         ft.addToBackStack(null);
@@ -84,6 +86,15 @@ public class FolderFragment extends BaseFragment {
     public boolean requestContentFocus() {
         TypeFragment child = getChild();
         return child != null && child.requestContentFocus();
+    }
+
+    public boolean isInContent(View focus) {
+        TypeFragment child = getChild();
+        return child != null && child.isInContent(focus);
+    }
+
+    public void setNavSelected(int position) {
+        Optional.ofNullable(getChild()).ifPresent(f -> f.setNavSelected(position));
     }
 
     public void onRefresh() {

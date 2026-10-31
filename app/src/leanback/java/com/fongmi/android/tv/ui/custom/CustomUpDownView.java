@@ -1,6 +1,9 @@
 package com.fongmi.android.tv.ui.custom;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
 
@@ -48,6 +51,41 @@ public class CustomUpDownView extends MaterialTextView {
         if (upListener != null && KeyUtil.isUpKey(event)) upListener.onUp();
         if (downListener != null && KeyUtil.isDownKey(event)) downListener.onDown();
         return true;
+    }
+
+    /**
+     * 无文字、只配了 drawableStart 时按图标模式绘制：把图标严格放在控件正中，
+     * 避免空文本时自带的 compound drawable 靠左上偏移；文字模式完全走原有逻辑。
+     */
+    @Override
+    protected void onDraw(Canvas canvas) {
+        Drawable icon = getCenterIcon();
+        if (icon == null) {
+            super.onDraw(canvas);
+            return;
+        }
+        int paddingLeft = getPaddingLeft();
+        int paddingTop = getPaddingTop();
+        int availableWidth = getWidth() - paddingLeft - getPaddingRight();
+        int availableHeight = getHeight() - paddingTop - getPaddingBottom();
+        int size = Math.min(Math.min(icon.getIntrinsicWidth(), icon.getIntrinsicHeight()), Math.min(availableWidth, availableHeight));
+        if (size <= 0) {
+            super.onDraw(canvas);
+            return;
+        }
+        int left = paddingLeft + (availableWidth - size) / 2;
+        int top = paddingTop + (availableHeight - size) / 2;
+        icon.setBounds(left, top, left + size, top + size);
+        icon.setState(getDrawableState());
+        icon.draw(canvas);
+    }
+
+    private Drawable getCenterIcon() {
+        if (!TextUtils.isEmpty(getText())) return null;
+        Drawable[] drawables = getCompoundDrawablesRelative();
+        if (drawables.length > 0 && drawables[0] != null) return drawables[0];
+        drawables = getCompoundDrawables();
+        return drawables.length > 0 ? drawables[0] : null;
     }
 
     public interface UpListener {

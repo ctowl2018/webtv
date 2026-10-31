@@ -24,7 +24,7 @@ public final class PlayerOsdController {
         String getTitle();
     }
 
-    private final SimpleDateFormat clock = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+    private final SimpleDateFormat clock = new SimpleDateFormat("HH:mm", Locale.getDefault());
     private final DecimalFormat speed = new DecimalFormat("0.0");
     private final View root;
     private final TextView topLeft;

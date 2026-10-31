@@ -1,13 +1,10 @@
 package com.fongmi.android.tv.setting;
 
-import java.util.Locale;
-
 public final class DisplaySettings {
 
-    public static final String LANGUAGE_ENGLISH = "en";
+    //只保留简体中文：其余语种资源已在构建中移除（resConfigs "zh-rCN"），
+    //这里的归一化一律返回简体中文，任何历史偏好值都会被纠正。
     public static final String LANGUAGE_SIMPLIFIED = "zh-CN";
-    public static final String LANGUAGE_TRADITIONAL = "zh-TW";
-    private static final String[] LANGUAGES = {LANGUAGE_ENGLISH, LANGUAGE_SIMPLIFIED, LANGUAGE_TRADITIONAL};
 
     public static final int UI_SCALE_FOLLOW_SYSTEM = 0;
     public static final int UI_SCALE_STANDARD = 1;
@@ -21,25 +18,15 @@ public final class DisplaySettings {
     }
 
     public static String normalizeLanguage(String value) {
-        if (value == null || value.trim().isEmpty()) return LANGUAGE_ENGLISH;
-        String tag = value.trim().replace('_', '-');
-        Locale locale = Locale.forLanguageTag(tag);
-        if ("en".equalsIgnoreCase(locale.getLanguage())) return LANGUAGE_ENGLISH;
-        if (!"zh".equalsIgnoreCase(locale.getLanguage())) return LANGUAGE_ENGLISH;
-        String script = locale.getScript();
-        String country = locale.getCountry();
-        if ("Hant".equalsIgnoreCase(script) || "TW".equalsIgnoreCase(country) || "HK".equalsIgnoreCase(country) || "MO".equalsIgnoreCase(country)) return LANGUAGE_TRADITIONAL;
         return LANGUAGE_SIMPLIFIED;
     }
 
     public static int languageIndex(String language) {
-        String normalized = normalizeLanguage(language);
-        for (int i = 0; i < LANGUAGES.length; i++) if (LANGUAGES[i].equals(normalized)) return i;
         return 0;
     }
 
     public static String languageAt(int index) {
-        return LANGUAGES[index >= 0 && index < LANGUAGES.length ? index : 0];
+        return LANGUAGE_SIMPLIFIED;
     }
 
     public static int normalizeUiScale(int scale) {

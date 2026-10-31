@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  海报卡片：选中态不再给整张卡盖一层高亮/遮罩（原 foreground=selector_vod 会在整图上叠白色块），
+  焦点提示只落在下方的片名区域 —— 见 name 的 selector_vod_name（选中 75% 黑底）。
+  其余（缩放缓动、卡片结构、未选中态）保持不变。
+-->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:focusable="true"
-    android:focusableInTouchMode="true"
-    android:foreground="@drawable/selector_vod">
+    android:focusableInTouchMode="true">
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/image"
@@ -66,19 +72,19 @@
         android:textSize="14sp"
         tools:text="1080p" />
 
-    <com.google.android.material.textview.MaterialTextView
+    <!-- 片名条：选中时底色翻白、文字转深色（PosterNameView 自带 160ms 过渡） -->
+    <com.fongmi.android.tv.ui.custom.PosterNameView
         android:id="@+id/name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/image"
         android:layout_alignStart="@+id/image"
         android:layout_alignEnd="@+id/image"
-        android:background="@drawable/shape_vod_name"
+        android:duplicateParentState="true"
         android:ellipsize="marquee"
         android:gravity="center"
         android:padding="6dp"
         android:singleLine="true"
-        android:textColor="@color/white"
         android:textSize="16sp"
         tools:text="蜘蛛人" />
 

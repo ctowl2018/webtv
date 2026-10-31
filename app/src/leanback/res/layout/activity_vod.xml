@@ -5,17 +5,36 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <androidx.leanback.widget.HorizontalGridView
-        android:id="@+id/recycler"
+    <!-- 品牌工具栏：与首页标题栏同一套尺寸/位置（左侧 24dp 组合标，右侧三个入口 + 时钟），无源切换 -->
+    <include
+        android:id="@+id/brand"
+        layout="@layout/view_brand_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <!-- 分类行：最左侧固定「首页」入口，点击回到首页；其余分类在右侧滚动 -->
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:id="@+id/typeBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:clipChildren="false"
-        android:clipToPadding="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
         android:paddingStart="24dp"
-        android:paddingTop="24dp"
+        android:paddingTop="0dp"
         android:paddingEnd="24dp"
-        app:focusOutEnd="false"
-        app:focusOutFront="false" />
+        android:paddingBottom="10dp">
+
+        <!-- 「首页」入口已并入分类标签网格（TypeAdapter.withHome），与标签同排、同滚动 -->
+        <androidx.leanback.widget.HorizontalGridView
+            android:id="@+id/recycler"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            app:focusOutEnd="false"
+            app:focusOutFront="true" />
+
+    </androidx.appcompat.widget.LinearLayoutCompat>
 
     <com.fongmi.android.tv.ui.custom.CustomViewPager
         android:id="@+id/pager"

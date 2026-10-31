@@ -29,11 +29,9 @@ import com.fongmi.android.tv.ui.dialog.OneKeySyncDialog;
 import com.fongmi.android.tv.ui.dialog.ShellProxyDialog;
 import com.fongmi.android.tv.ui.dialog.SiteHealthDialog;
 import com.fongmi.android.tv.ui.dialog.ViewingRecordSyncDialog;
-import com.fongmi.android.tv.ui.dialog.WebHomeExtensionDialog;
 import com.fongmi.android.tv.utils.FamilyFilter;
 import com.fongmi.android.tv.utils.LoginStateSync;
 import com.fongmi.android.tv.utils.Notify;
-import com.fongmi.android.tv.web.ext.WebHomeExtensionRegistry;
 
 public class SettingEnhanceFragment extends BaseFragment {
 
@@ -63,10 +61,7 @@ public class SettingEnhanceFragment extends BaseFragment {
         mBinding.debugLog.setOnClickListener(this::setDebugLog);
         mBinding.siteHealthSort.setOnClickListener(view -> SiteHealthDialog.show(this, this::setText));
         mBinding.siteHealthSort.setOnLongClickListener(this::clearSiteHealth);
-        mBinding.webHomeExtension.setOnClickListener(view -> WebHomeExtensionDialog.show(this, this::setText));
-        mBinding.webHomeExtension.setOnLongClickListener(this::clearWebHomeExtension);
         mBinding.gitCloud.setOnClickListener(view -> GitCloudDialog.show(this, this::setText));
-        mBinding.webHomeFullscreen.setOnClickListener(this::setWebHomeFullscreen);
         mBinding.cspWarmup.setOnClickListener(this::setCspWarmup);
         mBinding.playbackArtworkWall.setOnClickListener(this::setPlaybackArtworkWall);
         mBinding.familyFilter.setOnClickListener(this::setFamilyFilter);
@@ -84,9 +79,6 @@ public class SettingEnhanceFragment extends BaseFragment {
         mBinding.driveCheckText.setText(getSwitch(Setting.isDriveCheck()));
         mBinding.debugLogText.setText(getSwitch(Setting.isDebugLog()));
         mBinding.siteHealthSortText.setText(getSwitch(Setting.isSiteHealthSort()));
-        WebHomeExtensionRegistry.Snapshot webHomeExtension = WebHomeExtensionRegistry.get().snapshot();
-        mBinding.webHomeExtensionText.setText(getSwitch(Setting.isWebHomeExtension()) + " · " + webHomeExtension.readyCount + "/" + webHomeExtension.installedCount);
-        mBinding.webHomeFullscreenText.setText(getSwitch(Setting.isWebHomeFullscreen()));
         mBinding.cspWarmupText.setText(getCspWarmupText());
         mBinding.playbackArtworkWallText.setText(getSwitch(Setting.isPlaybackArtworkWall()));
         mBinding.familyFilterText.setText(Setting.isFamilyFilter() ? getString(R.string.setting_family_filter_summary_on, FamilyFilter.keywords().size()) : getString(R.string.setting_family_filter_summary_off));
@@ -117,11 +109,6 @@ public class SettingEnhanceFragment extends BaseFragment {
         mBinding.debugLogText.setText(getSwitch(Setting.isDebugLog()));
         if (!Setting.isDebugLog()) return;
         DebugLogDialog.show(this);
-    }
-
-    private void setWebHomeFullscreen(View view) {
-        Setting.putWebHomeFullscreen(!Setting.isWebHomeFullscreen());
-        mBinding.webHomeFullscreenText.setText(getSwitch(Setting.isWebHomeFullscreen()));
     }
 
     private void setCspWarmup(View view) {
@@ -155,11 +142,6 @@ public class SettingEnhanceFragment extends BaseFragment {
         return true;
     }
 
-    private boolean clearWebHomeExtension(View view) {
-        WebHomeExtensionRegistry.get().clear();
-        Notify.show(R.string.web_home_extension_clear_done);
-        return true;
-    }
 
     @Override
     public void onHiddenChanged(boolean hidden) {

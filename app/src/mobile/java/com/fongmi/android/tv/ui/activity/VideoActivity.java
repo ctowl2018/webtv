@@ -1204,6 +1204,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void setEnding(long ending) {
+        long duration = player().getDuration();
+        if (duration > 0) ending = Math.min(ending, Math.max(0, duration - 1000));
+        ending = Math.max(0, ending);
         mHistory.setEnding(ending);
         mBinding.control.action.ending.setText(ending <= 0 ? getString(R.string.play_ed) : Util.timeMs(mHistory.getEnding()));
     }
@@ -1679,6 +1682,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (mAudio != null) mAudio.onTimeChanged();
         PlaybackEventCollector.get().onProgress(mHistory, player());
         if (mHistory.canSave() && mHistory.canSync()) syncHistory();
+        //片尾判定沿用 main 分支原始实现
         if (mHistory.getEnding() > 0 && duration > 0 && mHistory.getEnding() + position >= duration) {
             checkEnded(false);
         }

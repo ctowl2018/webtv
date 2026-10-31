@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 首页左上角源名称：次级文字色，弱于品牌字标 -->
+    <color name="home_source_name">#9BA7B6</color>
+
+    <!--
+      全局焦点底色：所有焦点态统一用这块半透明白（20% 白），替代原先各处的白色描边线框。
+      值与控制条按钮（shape_chip_focused）一致，保证遥控器焦点在整套界面上是同一个视觉语言。
+    -->
+    <color name="focus_block">#33FFFFFF</color>
+
+</resources>

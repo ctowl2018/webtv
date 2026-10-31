@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  海报选中态：只在下方的片名区域铺一块 75% 不透明度的黑色（0xBF = 191/255 ≈ 75%），
+  白色片名压在上面仍有充足对比度（对纯白字≈ 4.6:1 以上，配合阴影可读性稳定）。
+  形状与未选中态完全一致（仅下方两角 8dp 圆角），所以切换时不会有圆角/尺寸跳变。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <corners
+        android:bottomLeftRadius="8dp"
+        android:bottomRightRadius="8dp" />
+
+    <solid android:color="#BF000000" />
+
+</shape>

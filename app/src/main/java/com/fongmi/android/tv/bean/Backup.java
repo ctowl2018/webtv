@@ -12,8 +12,6 @@ import com.fongmi.android.tv.event.ConfigEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.Callback;
 import com.fongmi.android.tv.setting.Setting;
-import com.fongmi.android.tv.web.HomeWebController;
-import com.fongmi.android.tv.web.ext.WebHomeExtensionRegistry;
 import com.github.catvod.utils.Prefers;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -31,13 +29,11 @@ import java.util.Set;
 
 public class Backup {
 
-    public static final String PREF_WEB_HOME_EXTENSION = "web_home_extension";
-    public static final String PREF_WEB_HOME_EXTENSION_SOURCES = "web_home_extension_user_sources";
 
     private static final String PLAYBACK_REMOTE_SYNC_CONFIG = "playback_remote_sync_config";
     private static final String PLAYBACK_WEBHOOK_CONFIG = "playback_webhook_config";
     private static final Set<String> DEPRECATED_PREFS = Set.of("theme_color", "wall_color");
-    private static final Set<String> APP_PREFS = Set.of("doh", "ua", "wall", "wall_type", "reset", "site_mode", "sync_mode", "sync_paths", "sync_device", "incognito", "family_filter_enabled", "family_filter_keywords", "family_filter_pass", "drive_check", "drive_check_cache", "web_home_fullscreen", "playback_artwork_wall", "csp_warmup", "csp_warmup_mode", "csp_warmup_sites", "shell_proxy", "shell_proxy_rules", "shell_proxy_url", "shell_proxy_hosts", "viewing_record_sync_enabled", "viewing_record_sync_local_write", PLAYBACK_REMOTE_SYNC_CONFIG, PLAYBACK_WEBHOOK_CONFIG, "update", "adblock", "zhuyin", "language", "ui_scale", "crash", "player", "mpv_render", "render", "size", "scale", "buffer", "background", "speed", "caption", "tunnel", "audio_prefer", "video_prefer", "prefer_aac", "subtitle_text_size", "subtitle_position", "boot_live", "across", "change", "invert", "scale_live");
+    private static final Set<String> APP_PREFS = Set.of("doh", "ua", "wall", "wall_type", "reset", "site_mode", "sync_mode", "sync_paths", "sync_device", "incognito", "family_filter_enabled", "family_filter_keywords", "family_filter_pass", "drive_check", "drive_check_cache", "playback_artwork_wall", "csp_warmup", "csp_warmup_mode", "csp_warmup_sites", "shell_proxy", "shell_proxy_rules", "shell_proxy_url", "shell_proxy_hosts", "viewing_record_sync_enabled", "viewing_record_sync_local_write", PLAYBACK_REMOTE_SYNC_CONFIG, PLAYBACK_WEBHOOK_CONFIG, "update", "adblock", "zhuyin", "language", "ui_scale", "crash", "player", "mpv_render", "render", "size", "scale", "buffer", "background", "speed", "caption", "tunnel", "audio_prefer", "video_prefer", "prefer_aac", "subtitle_text_size", "subtitle_position", "boot_live", "across", "change", "invert", "scale_live");
 
     @SerializedName("site")
     private List<Site> site;
@@ -106,36 +102,6 @@ public class Backup {
         Prefers.remove("playback_webhook_privacy_accepted");
         Setting.applyLanguage();
         RefreshEvent.language();
-    }
-
-    public void restore(boolean preserveMissingWebHomePrefs) {
-        restore();
-    }
-
-    public static void refreshWebHomeExtensions() {
-        WebHomeExtensionRegistry.get().clear();
-        HomeWebController.requestExtensionReload();
-    }
-
-    public int getWebHomeExtensionPreferenceCount() {
-        int count = 0;
-        for (String key : getPrefers().keySet()) if (isWebHomeExtensionPref(key)) count++;
-        return count;
-    }
-
-    public int getWebHomeExtensionSourceCount() {
-        Object value = getPrefers().get(PREF_WEB_HOME_EXTENSION_SOURCES);
-        if (!(value instanceof String) || ((String) value).isEmpty()) return 0;
-        try {
-            JsonElement element = new Gson().fromJson((String) value, JsonElement.class);
-            return element != null && element.isJsonArray() ? element.getAsJsonArray().size() : 0;
-        } catch (Throwable e) {
-            return 0;
-        }
-    }
-
-    static boolean isWebHomeExtensionPref(String key) {
-        return PREF_WEB_HOME_EXTENSION.equals(key) || key.startsWith("web_home_extension_") || key.startsWith("web_home_ext_enabled_");
     }
 
     public void restore(SyncOptions options, boolean force) {
@@ -256,7 +222,7 @@ public class Backup {
     }
 
     static boolean include(String key, SyncOptions options) {
-        if (key.startsWith("cache_")) return options.isWebHome() || options.isSpider();
+        if (key.startsWith("cache_")) return options.isSpider();
         if (key.startsWith("config_")) return options.isConfig();
         if (key.startsWith("login_state_")) return options.isLoginState();
         if ("keyword".equals(key) || "hot".equals(key)) return options.isSearch();

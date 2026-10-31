@@ -12,6 +12,11 @@
         android:visibility="gone"
         tools:visibility="visible">
 
+        <!--
+          片名：中英文统一走 sans-serif-black（中文落到 Noto Sans CJK Black＝类黑体，
+          英文/数字落到 Roboto Black，与 Arial Black 同字重），和欢迎页组合标同一套字体语言。
+          不改字号、单行 marquee 与截断逻辑，布局位置照旧。
+        -->
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/title"
             style="@style/Shadow"
@@ -20,6 +25,7 @@
             android:layout_marginEnd="16dp"
             android:layout_toStartOf="@+id/clock"
             android:ellipsize="marquee"
+            android:fontFamily="sans-serif-black"
             android:singleLine="true"
             android:textColor="@color/white"
             android:textSize="20sp"
@@ -42,10 +48,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
+            android:fontFamily="sans-serif-black"
             android:fontFeatureSettings="tnum"
             android:textColor="@color/white"
             android:textSize="28sp"
-            tools:text="09:20:00" />
+            tools:text="09:20" />
 
     </RelativeLayout>
 

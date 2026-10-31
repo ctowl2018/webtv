@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- “…” 弹出菜单内容：纵向操作列表（超出高度时内部滚动） -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/shape_control_menu"
+    android:clipToPadding="false"
+    android:fadingEdge="none"
+    android:padding="6dp"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:id="@+id/list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minWidth="168dp"
+        android:orientation="vertical" />
+
+</ScrollView>

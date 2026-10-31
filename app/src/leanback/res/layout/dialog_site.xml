@@ -1,142 +1,116 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  「切换源」面板：容器、标题、按钮、间距全部对齐播放控制条里的「播放设置」面板（dialog_control.xml）：
+    · 同一张玻璃底（由 BaseBottomSheetDialog 统一挂 shape_dialog_glass），同样从底部滑入；
+    · 标题用 ControlSheetTitle（13sp bold、white_70、上 13dp / 下 7dp）；
+    · 搜索框与右侧操作按钮用 ControlSheetButton 那张 selector（默认 #1FFFFFFF、选中 #38FFFFFF、焦点半透明白块）；
+    · 站点格子同样用 13sp，间距与面板内按钮一致。
+  功能与数据逻辑不变：仍是 3 列站点网格 + 搜索过滤 + 配置/搜索模式/换源模式/全选/取消/列表 六个操作。
+-->
 <androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/shape_site_dialog"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="20dp">
+
+    <com.google.android.material.textview.MaterialTextView
+        style="@style/ControlSheetTitle"
+        android:text="@string/site_switch_title" />
 
     <androidx.appcompat.widget.AppCompatEditText
         android:id="@+id/keyword"
         android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/selector_chip_round"
+        android:layout_height="36dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/selector_control_sheet_button"
         android:drawablePadding="8dp"
         android:ellipsize="end"
         android:hint="@string/site_search_hint"
         android:imeOptions="actionDone"
         android:inputType="text"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
         android:singleLine="true"
         android:textColor="@color/white"
-        android:textColorHint="@color/text"
-        android:textSize="16sp"
+        android:textColorHint="@color/white_70"
+        android:textSize="13sp"
         app:drawableStartCompat="@drawable/ic_site_search" />
 
     <androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="top"
         android:orientation="horizontal">
 
         <com.fongmi.android.tv.ui.custom.CustomRecyclerView
             android:id="@+id/recycler"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
             android:clipChildren="false"
             android:clipToPadding="false"
             android:overScrollMode="never"
-            app:maxHeight="344dp"
+            app:maxHeight="300dp"
             tools:itemCount="5"
             tools:listitem="@layout/adapter_site" />
 
+        <!-- 右侧操作列：与面板按钮同款背景/焦点，尺寸 36dp、间距 7dp -->
         <androidx.appcompat.widget.LinearLayoutCompat
             android:id="@+id/action"
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_marginStart="16dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="7dp"
             android:orientation="vertical"
             android:visibility="gone"
             tools:visibility="visible">
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/config"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/selector_site_action"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:nextFocusUp="@id/config"
+                style="@style/SiteSheetIcon"
                 android:nextFocusDown="@id/search"
-                android:padding="8dp"
-                android:src="@drawable/ic_site_config"
-                app:tint="@color/site_action_icon" />
+                android:src="@drawable/ic_site_config" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/search"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/selector_site_action"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:nextFocusUp="@id/config"
+                style="@style/SiteSheetIcon"
                 android:nextFocusDown="@id/change"
-                android:padding="8dp"
-                android:src="@drawable/ic_site_search"
-                app:tint="@color/site_action_icon" />
+                android:nextFocusUp="@id/config"
+                android:src="@drawable/ic_site_search" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/change"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/selector_site_action"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:nextFocusUp="@id/search"
+                style="@style/SiteSheetIcon"
                 android:nextFocusDown="@id/select"
-                android:padding="8dp"
-                android:src="@drawable/ic_site_change"
-                app:tint="@color/site_action_icon" />
+                android:nextFocusUp="@id/search"
+                android:src="@drawable/ic_site_change" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/select"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/selector_site_action"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:nextFocusUp="@id/change"
+                style="@style/SiteSheetIcon"
                 android:nextFocusDown="@id/cancel"
-                android:padding="8dp"
-                android:src="@drawable/ic_site_select"
-                app:tint="@color/site_action_icon" />
+                android:nextFocusUp="@id/change"
+                android:src="@drawable/ic_site_select" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/cancel"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/selector_site_action"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:nextFocusUp="@id/select"
+                style="@style/SiteSheetIcon"
                 android:nextFocusDown="@id/mode"
-                android:padding="8dp"
-                android:src="@drawable/ic_site_cancel"
-                app:tint="@color/site_action_icon" />
+                android:nextFocusUp="@id/select"
+                android:src="@drawable/ic_site_cancel" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/mode"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/selector_site_action"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
+                style="@style/SiteSheetIcon"
                 android:nextFocusUp="@id/cancel"
-                android:nextFocusDown="@id/mode"
-                android:padding="8dp"
-                app:tint="@color/site_action_icon"
+                android:visibility="gone"
                 tools:src="@drawable/ic_site_list" />
 
         </androidx.appcompat.widget.LinearLayoutCompat>
 
     </androidx.appcompat.widget.LinearLayoutCompat>
+
 </androidx.appcompat.widget.LinearLayoutCompat>

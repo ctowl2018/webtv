@@ -15,10 +15,7 @@
             <item android:state_focused="true">
                 <shape android:shape="rectangle">
                     <corners android:radius="6dp" />
-                    <solid android:color="#4DFFFFFF" />
-                    <stroke
-                        android:width="2dp"
-                        android:color="#BFFFFFFF" />
+                    <solid android:color="@color/focus_block" />
                 </shape>
             </item>
             <item android:state_selected="true">

@@ -92,9 +92,7 @@ public class ProxySetting {
         addUrls(site.getJar(), urls);
         addUrls(site.getClick(), urls);
         addUrls(site.getPlayUrl(), urls);
-        addUrls(site.getHomePage(), urls);
         addLocalFileUrls(site.getExt(), urls);
-        addLocalFileUrls(site.getHomePage(), urls);
         for (String category : site.getCategories()) addUrls(category, urls);
         for (Map.Entry<String, String> entry : site.getHeader().entrySet()) {
             addUrls(entry.getKey(), urls);

@@ -11,7 +11,6 @@ import android.view.View;
 import android.widget.RelativeLayout;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.pm.ShortcutInfoCompat;
 import androidx.core.content.pm.ShortcutManagerCompat;
 import androidx.core.graphics.drawable.IconCompat;
@@ -50,7 +49,6 @@ import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.utils.Util;
 import com.github.catvod.net.OkHttp;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.navigation.NavigationBarView;
 
 import org.greenrobot.eventbus.Subscribe;
@@ -60,8 +58,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     private FragmentStateManager mManager;
     private ActivityHomeBinding mBinding;
-    private AlertDialog exitDialog;
-    private boolean webHomeFullscreen;
+    private long mExitPressedTime;
     private int orientation;
 
     @Override
@@ -177,14 +174,12 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     }
 
     public void change(int position) {
-        resetVodFullscreen();
         setNavigationVisible(true);
         if (position < 2) mBinding.navigation.setSelectedItemId(position == 0 ? R.id.vod : R.id.setting);
         else mManager.change(position);
     }
 
     public void setNavigationVisible(boolean visible) {
-        setWebHomeFullscreen(!visible);
         RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) mBinding.container.getLayoutParams();
         if (visible) {
             params.addRule(RelativeLayout.ABOVE, R.id.navigation);
@@ -195,15 +190,6 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         }
         mBinding.container.setLayoutParams(params);
         mBinding.getRoot().requestApplyInsets();
-    }
-
-    private void setWebHomeFullscreen(boolean fullscreen) {
-        if (webHomeFullscreen == fullscreen) return;
-        webHomeFullscreen = fullscreen;
-        mBinding.getRoot().setFitsSystemWindows(!fullscreen);
-        mBinding.getRoot().setPadding(0, 0, 0, 0);
-        if (fullscreen) Util.hideSystemUI(this);
-        else Util.showSystemUI(this);
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -229,17 +215,11 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        resetVodFullscreen();
         setNavigationVisible(true);
         if (item.getItemId() == R.id.setting) return mManager.change(1);
         if (item.getItemId() == R.id.vod) return mManager.change(0);
         if (item.getItemId() == R.id.live) return openLive();
         return false;
-    }
-
-    private void resetVodFullscreen() {
-        VodFragment fragment = (VodFragment) mManager.getFragment(0);
-        if (fragment != null) fragment.setToolbar(true);
     }
 
     @Override
@@ -251,7 +231,6 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus && webHomeFullscreen) Util.hideSystemUI(this);
     }
 
     private void checkOrientation(Configuration newConfig) {
@@ -270,20 +249,20 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         } else if (mManager.isVisible(1)) {
             change(0);
         } else if (mManager.canBack(0)) {
-            showExitConfirmation();
+            onExitBack();
         }
     }
 
-    private void showExitConfirmation() {
-        if (exitDialog != null && exitDialog.isShowing()) return;
-        exitDialog = new MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.exit_confirm_title)
-                .setMessage(R.string.exit_confirm_message)
-                .setNegativeButton(R.string.dialog_negative, null)
-                .setPositiveButton(R.string.exit_confirm_positive, (dialog, which) -> confirmExit())
-                .create();
-        exitDialog.setOnDismissListener(dialog -> exitDialog = null);
-        exitDialog.show();
+    private void onExitBack() {
+        //连按两次返回键退出，不再弹确认对话框
+        long now = System.currentTimeMillis();
+        if (now - mExitPressedTime <= 2000) {
+            mExitPressedTime = 0;
+            confirmExit();
+        } else {
+            mExitPressedTime = now;
+            Notify.show(R.string.exiting_tip);
+        }
     }
 
     private void confirmExit() {
@@ -292,8 +271,13 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        mExitPressedTime = 0;
+    }
+
+    @Override
     protected void onDestroy() {
-        if (webHomeFullscreen) Util.showSystemUI(this);
         LiveConfig.get().clear();
         VodConfig.get().clear();
         BackupManager.backup();

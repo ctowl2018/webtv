@@ -22,7 +22,8 @@ public class Clock {
     }
 
     public static Clock create(TextView view) {
-        return new Clock().view(view).format("HH:mm:ss");
+        //统一 24 小时制「00:00」样式：两位小时 + 两位分钟，必要时补零
+        return new Clock().view(view).format("HH:mm");
     }
 
     public Clock() {

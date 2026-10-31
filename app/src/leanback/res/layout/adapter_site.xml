@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  切换源面板里的站点格子：与面板按钮同一套观感（圆角 6dp、13sp、半透明白底），
+  高度 40dp 与右侧 36dp 操作按钮 + 7dp 间距对齐，三列排布时行距一致。
+-->
 <androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="46dp"
+    android:layout_height="40dp"
     android:background="@drawable/selector_site_item"
     android:focusable="true"
     android:focusableInTouchMode="true"
@@ -11,9 +15,9 @@
 
     <View
         android:id="@+id/health"
-        android:layout_width="8dp"
-        android:layout_height="8dp"
-        android:layout_marginEnd="8dp"
+        android:layout_width="6dp"
+        android:layout_height="6dp"
+        android:layout_marginEnd="6dp"
         android:background="@drawable/shape_site_health" />
 
     <com.google.android.material.textview.MaterialTextView
@@ -24,14 +28,14 @@
         android:ellipsize="marquee"
         android:gravity="center"
         android:singleLine="true"
-        android:textColor="@color/white"
-        android:textSize="18sp" />
+        android:textColor="@color/selector_control_sheet_text"
+        android:textSize="13sp" />
 
     <com.google.android.material.checkbox.MaterialCheckBox
         android:id="@+id/check"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginStart="12dp"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="8dp"
         android:clickable="false"
         android:enabled="false"
         android:focusable="false"
