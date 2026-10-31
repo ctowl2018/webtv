@@ -564,14 +564,16 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     /**
      * 控制条的焦点链：进度条在上、按钮行在下（见 view_control_vod.xml）。
      *
-     * 上下两个方向统一写死，不依赖系统的几何搜索：
-     * · 上 = 回进度条（进度条在按钮行正上方）
-     * · 下 = 「播放/暂停」（按钮行第一个按钮，也是控制条呼出时的默认焦点）
+     * <p><b>规则一（焦点在控制条内）</b>：上/下都不把焦点送出控制条 ——
+     * 向下统一落到「播放/暂停」（按钮行第一个按钮，也是控制条呼出时的默认焦点），
+     * 向上统一回进度条。两端写死，不依赖系统的几何搜索。
      *
-     * 之前只给 prev/next/danmaku/audio/panelBtn 补过绑定，而且下方向是「指向自己」，
-     * playPause / 字幕 / 倍速 / 片头 / 片尾 这几个则完全没绑。按「下」时框架找不到
-     * 显式目标，只能退化成几何搜索：控制条位于屏幕底部，下方没有可聚焦控件，
-     * 焦点就被甩出控制条（实测按「下」后按钮行上再无高亮块，遥控器像是失灵）。
+     * <p>为什么必须显式绑：早期只给 prev/next/danmaku/audio/panelBtn 补过绑定，
+     * 而且下方向写成了「指向自己」，playPause / 字幕 / 倍速 / 片头 / 片尾 完全没绑。
+     * 框架找不到显式目标就退化成几何搜索，而控制条贴在屏幕底部、下方没有可聚焦控件，
+     * 焦点直接被甩出控制条（实测按「下」后按钮行上再无高亮块，遥控器像是失灵）。
+     *
+     * <p>控制条外的焦点约束不在这个方法里，见 {@link #onVerticalKey(KeyEvent)}。
      */
     private void bindControlFocus() {
         View timeBar = mBinding.control.seek.getFocusView();
@@ -600,10 +602,12 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             view.setNextFocusUpId(timeBarId);
             view.setNextFocusDownId(R.id.playPause);
         }
-        //水平方向取消首尾相接（原先 prev←more、more→prev 会绕整整一行）
-        //按钮行末位现在是「跳过片尾」（片头/片尾被弹性留白推到最右端），右边界停在它身上
-        mBinding.control.action.prev.setNextFocusLeftId(View.NO_ID);
-        mBinding.control.action.ending.setNextFocusRightId(View.NO_ID);
+        //水平方向两端封口：边界控件指向自己，按到头就停在原地。
+        //早先写的是 setNextFocusLeftId(View.NO_ID)，但 NO_ID 本身就是「没指定」的默认值，
+        //等于什么都没做，实际仍由几何搜索兜底 —— 语义含糊，画面边缘一旦没有候选就会丢焦点。
+        mBinding.control.action.playPause.setNextFocusLeftId(R.id.playPause);
+        mBinding.control.action.prev.setNextFocusLeftId(R.id.playPause);
+        mBinding.control.action.ending.setNextFocusRightId(R.id.ending);
     }
 
     /**
@@ -2370,10 +2374,42 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             }
         }
         if (onEpisodeKey(event)) return true;
+        if (onVerticalKey(event)) return true;
         if (isFullscreen() && isGone(mBinding.control.getRoot()) && mKeyDown.hasEvent(event) && service() != null) return mKeyDown.onKeyDown(event);
         if (KeyUtil.isMediaFastForward(event)) return onSeekForward();
         if (KeyUtil.isMediaRewind(event)) return onSeekBack();
         return super.dispatchKeyEvent(event);
+    }
+
+    /**
+     * 上/下方向键的焦点仲裁 —— 播放页唯一的判定点，两条规则互斥且互补。
+     *
+     * <p>判据只有一条：{@link #isInControlBar(View)} 给出的「焦点是不是落在控制条内」。
+     * 控制条可见时，整页可聚焦的东西只有两处 —— 控制条本身、以及铺满全屏的播放画面，
+     * 所以「在控制条内 / 不在控制条内」天然构成一个不重不漏的划分。
+     *
+     * <p>规则一（焦点在控制条内）：放行给视图层处理。
+     * 按钮行统一把 nextFocusDown 指向「播放/暂停」（见 {@link #bindControlFocus()}），
+     * CustomUpDownView 系控件（字幕 / 倍速 / 片头 / 片尾）短按松手时按同一目标移焦，
+     * 按上则回到进度条，两端都还在控制条里，不会把焦点甩出去。
+     * <b>这里必须放行</b>：CustomUpDownView 靠首次 ACTION_DOWN 建立键盘长按判定，
+     * 若在此处 return true，倍速与片头片尾的长按连发就再也收不到事件。
+     *
+     * <p>规则二（焦点在控制条外）：一律不移动焦点，把按下与松手整对消费掉。
+     * 默认行为是交给 FocusFinder 做几何搜索：控制条贴在画面底部、四周没有可聚焦候选，
+     * 焦点会被甩到画面或别的按钮上，表现为「按一下方向键焦点就没了」。
+     *
+     * <p>控制条不可见时两条规则都不成立：此时方向键属于手势层
+     * （呼出控制条 / 快进快退 / 上滑调倍速）或详情页的 nextFocus 链，由各自逻辑接管。
+     * 详情页（非全屏）即便控制条意外残留，规则二也不生效，免得详情页的按钮导航被误伤。
+     */
+    private boolean onVerticalKey(KeyEvent event) {
+        if (!KeyUtil.isUpKey(event) && !KeyUtil.isDownKey(event)) return false;
+        if (!isVisible(mBinding.control.getRoot())) return false;
+        //规则一：控制条内的上下键交给视图层，Activity 不插手
+        if (isInControlBar(getCurrentFocus())) return false;
+        //规则二只作用于全屏播放态：详情页的按钮、选集、筛选列表仍走各自的 nextFocus 链
+        return isFullscreen();
     }
 
     @Override
