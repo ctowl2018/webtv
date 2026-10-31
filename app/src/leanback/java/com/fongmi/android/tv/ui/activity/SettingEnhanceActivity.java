@@ -13,20 +13,12 @@ import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.playback.ViewingRecordSyncStore;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.databinding.ActivitySettingEnhanceBinding;
-import com.fongmi.android.tv.gitcloud.GitCloudAccountStore;
-import com.fongmi.android.tv.setting.CustomCspSetting;
 import com.fongmi.android.tv.setting.ProxySetting;
-import com.fongmi.android.tv.setting.SiteHealthStore;
 import com.fongmi.android.tv.ui.base.BaseActivity;
-import com.fongmi.android.tv.ui.dialog.CspWarmupDialog;
-import com.fongmi.android.tv.ui.dialog.CustomCspDialog;
-import com.fongmi.android.tv.ui.dialog.DebugLogDialog;
-import com.fongmi.android.tv.ui.dialog.GitCloudDialog;
 import com.fongmi.android.tv.ui.dialog.LoginStateLearnDialog;
 import com.fongmi.android.tv.ui.dialog.ManagePageDialog;
 import com.fongmi.android.tv.ui.dialog.OneKeySyncDialog;
 import com.fongmi.android.tv.ui.dialog.ShellProxyDialog;
-import com.fongmi.android.tv.ui.dialog.SiteHealthDialog;
 import com.fongmi.android.tv.ui.dialog.ViewingRecordSyncDialog;
 import com.fongmi.android.tv.utils.FamilyFilter;
 import com.fongmi.android.tv.utils.LoginStateSync;
@@ -51,18 +43,13 @@ public class SettingEnhanceActivity extends BaseActivity {
 
     @Override
     protected void initView(Bundle savedInstanceState) {
-        mBinding.debugLog.requestFocus();
+        mBinding.driveCheck.requestFocus();
         setText();
     }
 
     @Override
     protected void initEvent() {
         mBinding.driveCheck.setOnClickListener(this::setDriveCheck);
-        mBinding.debugLog.setOnClickListener(this::setDebugLog);
-        mBinding.siteHealthSort.setOnClickListener(view -> SiteHealthDialog.show(this, this::setText));
-        mBinding.siteHealthSort.setOnLongClickListener(this::clearSiteHealth);
-        mBinding.gitCloud.setOnClickListener(view -> GitCloudDialog.show(this, this::setText));
-        mBinding.cspWarmup.setOnClickListener(this::setCspWarmup);
         mBinding.playbackArtworkWall.setOnClickListener(this::setPlaybackArtworkWall);
         mBinding.familyFilter.setOnClickListener(this::setFamilyFilter);
         mBinding.viewingRecordSync.setOnClickListener(view -> ViewingRecordSyncDialog.show(this, this::setText));
@@ -70,49 +57,24 @@ public class SettingEnhanceActivity extends BaseActivity {
         mBinding.shellProxy.setOnClickListener(view -> ShellProxyDialog.show(this, this::setText));
         mBinding.shellProxy.setOnLongClickListener(v -> false);
         mBinding.shellProxyConfig.setVisibility(View.GONE);
-        mBinding.customCsp.setOnClickListener(view -> CustomCspDialog.show(this, this::setText));
         mBinding.loginState.setOnClickListener(view -> LoginStateLearnDialog.show(this, this::setText));
         mBinding.oneKeySync.setOnClickListener(v -> OneKeySyncDialog.create().show(this));
     }
 
     private void setText() {
         mBinding.driveCheckText.setText(getSwitch(Setting.isDriveCheck()));
-        mBinding.debugLogText.setText(getSwitch(Setting.isDebugLog()));
-        mBinding.siteHealthSortText.setText(getSwitch(Setting.isSiteHealthSort()));
-        mBinding.cspWarmupText.setText(getCspWarmupText());
         mBinding.playbackArtworkWallText.setText(getSwitch(Setting.isPlaybackArtworkWall()));
         mBinding.familyFilterText.setText(Setting.isFamilyFilter() ? getString(R.string.setting_family_filter_summary_on, FamilyFilter.keywords().size()) : getString(R.string.setting_family_filter_summary_off));
         mBinding.viewingRecordSyncText.setText(ViewingRecordSyncStore.summary(this));
         mBinding.managePageText.setText(R.string.manage_page_web);
         mBinding.shellProxyText.setText(getSwitch(Setting.isShellProxy()) + " · " + getString(R.string.setting_proxy_rule_count, ProxySetting.count()));
         mBinding.shellProxyConfigText.setText(getString(R.string.setting_proxy_rule_count, ProxySetting.count()));
-        CustomCspSetting.Registry registry = CustomCspSetting.load();
-        CustomCspSetting.Count count = CustomCspSetting.count();
-        mBinding.customCspText.setText(getSwitch(registry.isEnabled()) + " · " + getString(R.string.setting_custom_csp_count, count.active(), count.enabled()));
         mBinding.loginStateText.setText(getString(LoginStateSync.hasLearningSnapshot() ? R.string.login_state_learning_count : R.string.login_state_count, LoginStateSync.learnedCount(), LoginStateSync.pendingPaths().size()));
-        mBinding.gitCloudText.setText(getString(R.string.git_cloud_account_count, GitCloudAccountStore.list().size()));
-    }
-
-    private String getCspWarmupText() {
-        int mode = Setting.getCspWarmupMode();
-        if (mode == Setting.CSP_WARMUP_CUSTOM) return getString(R.string.setting_csp_warmup_custom_count, Setting.getCspWarmupSites().size());
-        return getString(mode == Setting.CSP_WARMUP_DEFAULT ? R.string.setting_csp_warmup_default : R.string.setting_disable);
     }
 
     private void setDriveCheck(View view) {
         Setting.putDriveCheck(!Setting.isDriveCheck());
         mBinding.driveCheckText.setText(getSwitch(Setting.isDriveCheck()));
-    }
-
-    private void setDebugLog(View view) {
-        Setting.putDebugLog(!Setting.isDebugLog());
-        mBinding.debugLogText.setText(getSwitch(Setting.isDebugLog()));
-        if (!Setting.isDebugLog()) return;
-        DebugLogDialog.show(this);
-    }
-
-    private void setCspWarmup(View view) {
-        CspWarmupDialog.show(this, this::setText);
     }
 
     private void setPlaybackArtworkWall(View view) {
@@ -135,13 +97,6 @@ public class SettingEnhanceActivity extends BaseActivity {
                     Notify.show(R.string.setting_family_filter_saved);
                 }).show();
     }
-
-    private boolean clearSiteHealth(View view) {
-        SiteHealthStore.clear();
-        Notify.show(R.string.site_health_clear_done);
-        return true;
-    }
-
 
     @Override
     protected void onResume() {
