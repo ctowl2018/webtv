@@ -33,10 +33,6 @@
         <item name="keep_content_on_player_reset">false</item>
     </style>
 
-    <style name="Player.Live">
-        <item name="keep_content_on_player_reset">true</item>
-    </style>
-
     <style name="Theme.WebHTV.LightDialog" parent="Theme.Material3.Light.Dialog.Alert">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowBackground">@color/transparent</item>

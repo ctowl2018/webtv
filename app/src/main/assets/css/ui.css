@@ -288,9 +288,7 @@ body.manage-page.local-mode .remote-only {
     .file-state-row { grid-template-columns: 1fr; }
     .md-btn { padding: 0 16px; }
     .file-action { min-width: 44px; padding: 0 8px; }
-    .field-row.compact.live-common-row,
     .field-row.compact.advanced-field-row { flex-direction: column; }
-    .field-row.compact.live-common-row .md-field.short,
     .field-row.compact.advanced-field-row .md-field.short { flex-basis: auto; }
     .flag-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -2238,36 +2236,6 @@ body.manage-page {
     font-size: 12px;
     line-height: 16px;
     font-weight: 700;
-}
-
-.live-field-label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.live-field-label span {
-    flex: 0 0 auto;
-    border-radius: 999px;
-    padding: 1px 7px;
-    font-size: 11px;
-    line-height: 16px;
-    font-weight: 800;
-}
-
-.required-label {
-    color: var(--md-error);
-}
-
-.required-label span {
-    background: var(--md-error-container);
-    color: var(--md-on-error-container);
-}
-
-.optional-label span {
-    background: var(--md-surface-container-high);
-    color: var(--md-on-surface-variant);
 }
 
 .toggle-pill {

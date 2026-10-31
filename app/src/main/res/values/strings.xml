@@ -7,10 +7,7 @@
     <string name="splash_slogan_cn">万象清音 一屏尽览</string>
     <string name="splash_slogan_en">All in One Screen</string>
 
-    <!-- Live -->
-    <string name="live_pass">Pass</string>
-    <string name="live_refresh">Refresh</string>
-    <string name="live_line">Line <xliff:g name="name">%s</xliff:g></string>
+    <string name="action_refresh">Refresh</string>
 
     <!-- Detail -->
     <string name="detail_title"><xliff:g name="name">%s</xliff:g> : <xliff:g name="name">%s</xliff:g></string>
@@ -212,11 +209,9 @@
 
     <!-- Setting -->
     <string name="setting_vod">Vod</string>
-    <string name="setting_live">Live</string>
     <string name="setting_wall">Wallpaper</string>
     <string name="setting_player">Player setting</string>
     <string name="setting_danmaku">Danmaku setting</string>
-    <string name="setting_enhance">Enhancements</string>
     <string name="setting_about">About</string>
     <string name="about_message">Version %1$s (%2$d)
 Build: %3$s / %4$s
@@ -239,16 +234,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="setting_csp_warmup_select_site">Select CSP sites</string>
     <string name="setting_csp_warmup_no_site">No jar CSP site available</string>
     <string name="setting_csp_warmup_select_required">Select at least one CSP site</string>
-    <string name="setting_playback_artwork_wall">Playback stills</string>
-    <string name="setting_drive_check">Drive link check</string>
-    <string name="setting_family_filter">Family filter</string>
-    <string name="setting_family_filter_summary_off">Disabled</string>
-    <string name="setting_family_filter_summary_on">Enabled · %1$d keywords</string>
-    <string name="setting_family_filter_keywords">Keywords</string>
-    <string name="setting_family_filter_keywords_hint">One keyword per line</string>
-    <string name="setting_family_filter_saved">Family filter saved</string>
-    <string name="setting_shell_proxy">Proxy</string>
-    <string name="setting_shell_proxy_config">Proxy</string>
     <string name="setting_custom_csp">Site Injection</string>
     <string name="setting_custom_csp_add">Add</string>
     <string name="setting_custom_csp_count">%1$d/%2$d active</string>
@@ -263,19 +248,10 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="setting_custom_csp_extensions">extensions array</string>
     <string name="setting_custom_csp_extensions_invalid">Invalid extensions JSON</string>
     <string name="setting_custom_csp_common">General CSP</string>
-    <string name="setting_custom_csp_live">Live</string>
     <string name="setting_custom_csp_common_name">General CSP %1$d</string>
-    <string name="setting_custom_csp_live_name">Live %1$d</string>
     <string name="setting_custom_csp_key">Key</string>
     <string name="setting_custom_csp_type">Type</string>
-    <string name="setting_custom_csp_player_type">Player type</string>
-    <string name="setting_custom_csp_unset">Unset</string>
-    <string name="setting_custom_csp_player_system">0 System</string>
-    <string name="setting_custom_csp_player_ijk">1 IJK</string>
-    <string name="setting_custom_csp_player_exo">2 EXO</string>
-    <string name="setting_custom_csp_live_url">Live URL</string>
     <string name="setting_custom_csp_logo">Logo</string>
-    <string name="setting_custom_csp_epg">EPG</string>
     <string name="setting_custom_csp_ua">UA</string>
     <string name="setting_custom_csp_origin">Origin</string>
     <string name="setting_custom_csp_referer">Referer</string>
@@ -329,7 +305,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="setting_proxy_text_mode">Text</string>
     <string name="setting_proxy_ui_mode">Edit</string>
     <string name="setting_proxy_add_rule">Add rule</string>
-    <string name="setting_proxy_rule_count">%1$d rules</string>
     <string name="setting_proxy_invalid">Invalid proxy URL</string>
     <string name="setting_proxy_suggest">Auto suggest</string>
     <string name="setting_proxy_test">Test proxy</string>
@@ -386,15 +361,12 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="sync_item_keep">Favorites</string>
     <string name="sync_item_settings">App settings</string>
     <string name="sync_item_login_state">Login state</string>
-    <string name="setting_login_state">Login state learning</string>
     <string name="login_state_message">Learn cookie and login-state file paths for one-key sync. %1$d paths are selected. Use Manage paths to review candidates and inspect file contents.</string>
     <string name="login_state_learning_message">Learning is active. Log in to the drive account, return here, then finish learning. %1$d paths are currently selected.</string>
     <string name="login_state_start">Start learning</string>
     <string name="login_state_finish">Finish learning</string>
     <string name="login_state_started">Login state learning started</string>
     <string name="login_state_finished">Login state learning finished: %1$d selected, %2$d pending</string>
-    <string name="login_state_count">%1$d selected · %2$d pending</string>
-    <string name="login_state_learning_count">Learning · %1$d selected · %2$d pending</string>
     <string name="login_state_learned_title">Selected paths</string>
     <string name="login_state_pending_title">Pending candidates</string>
     <string name="login_state_findings_title">Latest findings</string>
@@ -506,14 +478,12 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="dialog_config_hint">Please enter the config…</string>
     <string name="dialog_config_name">Please enter the name…</string>
     <string name="dialog_config_preview_vod">VOD config · %1$d sites%2$s</string>
-    <string name="dialog_config_preview_live">Live config · %1$d entries</string>
     <string name="dialog_config_preview_wall">Wallpaper config</string>
     <string name="dialog_config_preview_depot">Config repository · %1$d entries</string>
     <string name="dialog_config_preview_logo"> · logo</string>
     <string name="dialog_config_validation_failed">Import check failed: %1$s</string>
     <string name="dialog_config_validation_empty">Current config cleared</string>
     <string name="config_center_vod">Manage VOD configs</string>
-    <string name="config_center_live">Manage live configs</string>
     <string name="config_center_wall">Manage wallpaper configs</string>
     <string name="config_delete_warn">Deleting this config will also remove linked history and favorites under it.</string>
     <string name="dialog_config_url">Please enter the url…</string>
@@ -539,10 +509,8 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="desc_lock">Lock screen</string>
     <string name="desc_rotate">Rotate</string>
     <string name="desc_voice">Voice search</string>
-    <string name="live_load_failed">Live source failed to load</string>
     <string name="error_play_flag">No flag data</string>
     <string name="error_play_timeout">Timed out</string>
-    <string name="error_play_tvbus">Error code: <xliff:g name="name">%s</xliff:g></string>
     <string name="error_detail">No play data</string>
     <string name="error_empty">Nothing here 👀</string>
 
@@ -764,11 +732,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
 <string name="lut_import">Import</string>
 <string name="lut_import_failed">LUT import failed</string>
 <string name="lut_imported">LUT preset imported</string>
-<string name="epg_reminder_added">Reminder set for this program</string>
-<string name="epg_reminder_cancelled">Reminder cancelled</string>
-<string name="epg_reminder_too_late">Too close to the start time to set a reminder</string>
-<string name="epg_reminder_no_permission">Allow exact alarms before setting a reminder</string>
-<string name="epg_reminder_failed">Could not set the reminder</string>
 <string name="lut_local">Local</string>
 <string name="lut_missing">Preset missing</string>
 <string name="lut_original">Original</string>
@@ -867,15 +830,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     </string-array>
 
 
-    <string name="live_epg_select">Custom EPG source</string>
-    <string name="live_epg_default">Follow live source</string>
-    <string name="live_epg_apply">Apply</string>
-    <string name="live_epg_hint">XML/GZ URLs (comma-separated) or {name}/{date} template</string>
-    <string name="live_epg_history">History</string>
-    <string name="live_epg_manage">Manage</string>
-    <string name="live_epg_delete">Delete selected</string>
-    <string name="live_epg_clear">Clear history</string>
-    <string name="live_epg_load_failed">Custom EPG failed to load</string>
     <string name="compact_episode_on">Compact episode titles enabled</string>
     <string name="compact_episode_off">Compact episode titles disabled</string>
     <string name="player_osd">Player OSD</string>
@@ -889,7 +843,6 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
         <item>Playback params</item>
     </string-array>
     <string name="setting_tab_offset">Offset</string>
-    <string name="setting_viewing_record_sync">Viewing record sync</string>
     <string name="viewing_record_sync_entry_summary">%1$s · Remote %2$d/%3$d · Webhook %4$d/%5$d</string>
     <string name="viewing_record_sync_switches">Switches</string>
     <string name="viewing_record_sync_master_desc">Controls remote sync and webhook reporting.</string>

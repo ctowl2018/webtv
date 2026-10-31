@@ -12,7 +12,7 @@
     <item
         android:id="@+id/refresh"
         android:icon="@drawable/ic_action_refresh"
-        android:title="@string/live_refresh"
+        android:title="@string/action_refresh"
         app:showAsAction="always" />
 
     <item

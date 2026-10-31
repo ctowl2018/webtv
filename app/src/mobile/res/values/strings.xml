@@ -6,7 +6,6 @@
 
     <!-- Nav -->
     <string name="nav_vod">Vod</string>
-    <string name="nav_live">Live</string>
     <string name="nav_setting">Setting</string>
 
     <!-- Menu -->
@@ -59,6 +58,4 @@
         <item>PiP</item>
     </string-array>
 
-    <string name="live_program_empty">No program guide</string>
-    <string name="live_program_current">Live</string>
 </resources>

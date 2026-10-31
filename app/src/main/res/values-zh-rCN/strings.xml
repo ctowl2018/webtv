@@ -7,10 +7,7 @@
     <string name="splash_slogan_cn">万象清音 一屏尽览</string>
     <string name="splash_slogan_en">All in One Screen</string>
 
-    <!-- Live -->
-    <string name="live_pass">密码</string>
-    <string name="live_refresh">刷新</string>
-    <string name="live_line">线路 <xliff:g name="name">%s</xliff:g></string>
+    <string name="action_refresh">刷新</string>
 
     <!-- Detail -->
     <string name="detail_title"><xliff:g name="name">%s</xliff:g>：<xliff:g name="name">%s</xliff:g></string>
@@ -135,11 +132,9 @@
 
     <!-- Setting -->
     <string name="setting_vod">点播</string>
-    <string name="setting_live">直播</string>
     <string name="setting_wall">壁纸</string>
     <string name="setting_player">播放设置</string>
     <string name="setting_danmaku">弹幕设置</string>
-    <string name="setting_enhance">增强功能</string>
     <string name="setting_about">关于</string>
     <string name="about_message">版本 %1$s (%2$d)
 构建：%3$s / %4$s
@@ -162,16 +157,6 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
     <string name="setting_csp_warmup_select_site">选择 CSP 站点</string>
     <string name="setting_csp_warmup_no_site">没有可用的 Jar CSP 站点</string>
     <string name="setting_csp_warmup_select_required">请至少选择一个 CSP 站点</string>
-    <string name="setting_playback_artwork_wall">播放界面剧照</string>
-    <string name="setting_drive_check">网盘检测</string>
-    <string name="setting_family_filter">家庭过滤</string>
-    <string name="setting_family_filter_summary_off">禁用</string>
-    <string name="setting_family_filter_summary_on">启用 · %1$d 个关键词</string>
-    <string name="setting_family_filter_keywords">过滤关键词</string>
-    <string name="setting_family_filter_keywords_hint">每行一个关键词</string>
-    <string name="setting_family_filter_saved">家庭过滤已保存</string>
-    <string name="setting_shell_proxy">Proxy</string>
-    <string name="setting_shell_proxy_config">Proxy</string>
     <string name="setting_custom_csp">站点注入</string>
     <string name="setting_custom_csp_add">新增</string>
     <string name="setting_custom_csp_count">%1$d/%2$d 可用</string>
@@ -186,19 +171,10 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
     <string name="setting_custom_csp_extensions">extensions 数组</string>
     <string name="setting_custom_csp_extensions_invalid">extensions JSON 格式无效</string>
     <string name="setting_custom_csp_common">通用 CSP</string>
-    <string name="setting_custom_csp_live">直播</string>
     <string name="setting_custom_csp_common_name">通用 CSP %1$d</string>
-    <string name="setting_custom_csp_live_name">直播 %1$d</string>
     <string name="setting_custom_csp_key">Key</string>
     <string name="setting_custom_csp_type">类型</string>
-    <string name="setting_custom_csp_player_type">播放器类型</string>
-    <string name="setting_custom_csp_unset">不写</string>
-    <string name="setting_custom_csp_player_system">0 系统</string>
-    <string name="setting_custom_csp_player_ijk">1 IJK</string>
-    <string name="setting_custom_csp_player_exo">2 EXO</string>
-    <string name="setting_custom_csp_live_url">直播地址</string>
     <string name="setting_custom_csp_logo">Logo</string>
-    <string name="setting_custom_csp_epg">EPG</string>
     <string name="setting_custom_csp_ua">UA</string>
     <string name="setting_custom_csp_origin">Origin</string>
     <string name="setting_custom_csp_referer">Referer</string>
@@ -252,7 +228,6 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
     <string name="setting_proxy_text_mode">文本</string>
     <string name="setting_proxy_ui_mode">编辑</string>
     <string name="setting_proxy_add_rule">新增规则</string>
-    <string name="setting_proxy_rule_count">%1$d 条规则</string>
     <string name="setting_proxy_invalid">代理地址无效</string>
     <string name="setting_proxy_suggest">自动建议</string>
     <string name="setting_proxy_test">测试代理</string>
@@ -309,15 +284,12 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
     <string name="sync_item_keep">收藏</string>
     <string name="sync_item_settings">应用设置</string>
     <string name="sync_item_login_state">登录态</string>
-    <string name="setting_login_state">登录态学习</string>
     <string name="login_state_message">学习 Cookie 和登录态文件路径，供一键同步使用。当前已选 %1$d 条，可在管理路径中查看候选和文件内容。</string>
     <string name="login_state_learning_message">学习中。请去完成网盘登录，返回这里后点击完成学习。当前已选 %1$d 条路径。</string>
     <string name="login_state_start">开始学习</string>
     <string name="login_state_finish">完成学习</string>
     <string name="login_state_started">已开始登录态学习</string>
     <string name="login_state_finished">登录态学习完成：已选 %1$d 条，待确认 %2$d 条</string>
-    <string name="login_state_count">已选 %1$d · 待确认 %2$d</string>
-    <string name="login_state_learning_count">学习中 · 已选 %1$d · 待确认 %2$d</string>
     <string name="login_state_learned_title">已选路径</string>
     <string name="login_state_pending_title">待确认候选</string>
     <string name="login_state_findings_title">最近学习结果</string>
@@ -429,14 +401,12 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
     <string name="dialog_config_hint">请输入配置…</string>
     <string name="dialog_config_name">请输入名称…</string>
     <string name="dialog_config_preview_vod">点播配置 · %1$d 个站点%2$s</string>
-    <string name="dialog_config_preview_live">直播配置 · %1$d 个入口</string>
     <string name="dialog_config_preview_wall">壁纸配置</string>
     <string name="dialog_config_preview_depot">配置仓库 · %1$d 个入口</string>
     <string name="dialog_config_preview_logo"> · 含 logo</string>
     <string name="dialog_config_validation_failed">导入校验失败：%1$s</string>
     <string name="dialog_config_validation_empty">已清空当前配置</string>
     <string name="config_center_vod">管理点播配置</string>
-    <string name="config_center_live">管理直播配置</string>
     <string name="config_center_wall">管理壁纸配置</string>
     <string name="config_delete_warn">删除这个配置后，会一并移除关联的历史和收藏。</string>
     <string name="dialog_config_url">请输入地址…</string>
@@ -462,10 +432,8 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
     <string name="desc_lock">锁定屏幕</string>
     <string name="desc_rotate">旋转</string>
     <string name="desc_voice">语音搜索</string>
-    <string name="live_load_failed">直播源加载失败</string>
     <string name="error_play_flag">暂无线路数据</string>
     <string name="error_play_timeout">连接超时</string>
-    <string name="error_play_tvbus">错误代码：<xliff:g name="name">%s</xliff:g></string>
     <string name="error_detail">暂无播放数据</string>
     <string name="error_empty">这里什麽都没有 👀</string>
 
@@ -671,11 +639,6 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
 <string name="lut_import">导入</string>
 <string name="lut_import_failed">LUT 导入失败</string>
 <string name="lut_imported">LUT 预设已导入</string>
-<string name="epg_reminder_added">已设置节目提醒</string>
-<string name="epg_reminder_cancelled">已取消节目提醒</string>
-<string name="epg_reminder_too_late">距离开播太近，无法设置提醒</string>
-<string name="epg_reminder_no_permission">请在系统设置中允许「闹钟与提醒」后重试</string>
-<string name="epg_reminder_failed">无法设置节目提醒</string>
 <string name="lut_local">本地</string>
 <string name="lut_missing">预设不存在</string>
 <string name="lut_original">原色</string>
@@ -776,15 +739,6 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
     </string-array>
 
 
-    <string name="live_epg_select">自定义 EPG 源</string>
-    <string name="live_epg_default">跟随直播源</string>
-    <string name="live_epg_apply">应用</string>
-    <string name="live_epg_hint">输入逗号分隔的 XML/GZ 地址或 {name}/{date} 模板</string>
-    <string name="live_epg_history">历史记录</string>
-    <string name="live_epg_manage">管理</string>
-    <string name="live_epg_delete">删除所选</string>
-    <string name="live_epg_clear">清空历史</string>
-    <string name="live_epg_load_failed">自定义 EPG 加载失败</string>
     <string name="compact_episode_on">已开启集数标题紧凑显示</string>
     <string name="compact_episode_off">已关闭集数标题紧凑显示</string>
     <string name="player_osd">播放器 OSD</string>
@@ -797,7 +751,6 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
         <item>迷你进度条</item>
     </string-array>
     <string name="setting_tab_offset">偏移</string>
-    <string name="setting_viewing_record_sync">观影记录同步</string>
     <string name="viewing_record_sync_entry_summary">%1$s · 远端 %2$d/%3$d · Webhook %4$d/%5$d</string>
     <string name="viewing_record_sync_switches">开关</string>
     <string name="viewing_record_sync_master_desc">控制远端同步和 Webhook 上报。</string>

@@ -143,7 +143,7 @@
                                 <button class="file-action" onclick="toggleSyncSelection()" type="button" id="syncSelectBtn">取消</button>
                             </div>
                             <div class="option-grid">
-                                <label class="option-check"><input id="syncOptConfig" type="checkbox" checked><span><strong>接口与站源列表</strong><small>接口配置、站源、直播源</small></span></label>
+                                <label class="option-check"><input id="syncOptConfig" type="checkbox" checked><span><strong>接口与站源列表</strong><small>接口配置与站源</small></span></label>
                                 <label class="option-check"><input id="syncOptSpider" type="checkbox" checked onchange="updateSyncPathsVisible()"><span><strong>Jar/脚本保存数据</strong><small>包含下方选中的同步目录</small></span></label>
                                 <label class="option-check"><input id="syncOptLoginState" type="checkbox" checked><span><strong>登录态</strong><small>学习到的 Cookie、Token 与登录状态文件</small></span></label>
                                 <label class="option-check"><input id="syncOptSearch" type="checkbox" checked><span><strong>搜索记录</strong><small>关键词与热词</small></span></label>
@@ -253,7 +253,6 @@
                 </div>
                 <div class="md-toolbar">
                     <button class="md-btn md-btn-tonal" onclick="addCspItem('csp')">新增通用 CSP</button>
-                    <button class="md-btn md-btn-tonal" onclick="addCspItem('live')">新增直播</button>
                     <button class="md-btn md-btn-tonal" onclick="loadCspManage(true)">刷新</button>
                 </div>
                 <div class="manage-card manage-form-card">
@@ -323,7 +322,6 @@
                     <div class="config-toolbar">
                         <div class="segmented">
                             <button id="configFilterVod" class="segment active" onclick="setConfigFilter(0)" type="button">影视</button>
-                            <button id="configFilterLive" class="segment" onclick="setConfigFilter(1)" type="button">直播</button>
                             <button id="configFilterWall" class="segment" onclick="setConfigFilter(2)" type="button">壁纸</button>
                         </div>
                     </div>
@@ -482,7 +480,6 @@
                     <label class="form-label" for="configType">类型</label>
                     <select id="configType" class="md-input">
                         <option value="0">影视</option>
-                        <option value="1">直播</option>
                         <option value="2">壁纸</option>
                     </select>
                 </div>

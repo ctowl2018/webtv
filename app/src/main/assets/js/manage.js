@@ -1310,56 +1310,24 @@ function loadCspManage(force = false) {
     if (cspLoadedKey === activeKey() && !force) return;
     getJson('/manage/csp?' + targetQuery(), data => { cspRegistry = normalizeCspRegistry(data); cspLoadedKey = activeKey(); renderCspManage(); });
 }
-const CSP_KINDS = ['webHome', 'csp', 'live'];
+const CSP_KINDS = ['webHome', 'csp'];
 function cspKind(item = {}) {
     if (CSP_KINDS.includes(item.kind)) return item.kind;
-    if (item.live && typeof item.live === 'object') return 'live';
-    if (!item.site && !item.key && (item.url || item.groups || item.epg)) return 'live';
     if (item.webHome === true) return 'webHome';
     if (item.webHome === false) return 'csp';
     const api = String(siteValue(item, 'api', ''));
     const home = String(siteValue(item, 'homePage', siteValue(item, 'webHome', '')));
     return !api && !!home ? 'webHome' : 'csp';
 }
-function cspKindName(kind) { return kind === 'live' ? '直播' : kind === 'webHome' ? 'WebHome' : '通用 CSP'; }
-function liveDefaultObject(name = '') { return { name, type: 0, playerType: 2, ua: 'okhttp' }; }
+function cspKindName(kind) { return kind === 'webHome' ? 'WebHome' : '通用 CSP'; }
 function siteValue(item, key, fallback = '') {
     if (item[key] !== undefined && item[key] !== null && item[key] !== '') return item[key];
     return item.site && item.site[key] !== undefined && item.site[key] !== null ? item.site[key] : fallback;
-}
-function liveValue(item, key, fallback = '') {
-    if (item[key] !== undefined && item[key] !== null && item[key] !== '') return item[key];
-    return item.live && item.live[key] !== undefined && item.live[key] !== null ? item.live[key] : fallback;
 }
 function rawObjectFromItem(item, drop = []) {
     const object = { ...(item || {}) };
     ['id', 'enabled', 'kind', 'site', 'live', 'items', 'sites', 'lives', 'headerText', 'styleText', 'siteText', 'liveText', 'catchupText', 'coreText', 'groupsText', ...drop].forEach(key => delete object[key]);
     return object;
-}
-function jsonText(value, fallback) {
-    const data = value === undefined || value === null ? fallback : value;
-    return JSON.stringify(data, null, 2);
-}
-function hasJsonValue(value) {
-    if (value === undefined || value === null || value === '') return false;
-    if (Array.isArray(value)) return value.length > 0;
-    if (typeof value === 'object') return Object.keys(value).length > 0;
-    return true;
-}
-function assignOptionalJson(object, key, value) {
-    if (!hasJsonValue(value)) delete object[key];
-    else object[key] = value;
-}
-function buildFieldLabel(text, required = false, note = '') {
-    const tag = required ? '必填' : '可选';
-    const cls = required ? 'required-label' : 'optional-label';
-    return `<label class="form-label live-field-label ${cls}">${escHtml(text)}<span>${escHtml(note || tag)}</span></label>`;
-}
-function buildLiveTextField(key, label, value, placeholder = '', required = false, note = '', type = 'text', extraClass = '') {
-    return `<div class="md-field ${extraClass}">${buildFieldLabel(label, required, note)}<input class="md-input csp-field" data-key="${key}" type="${type}" value="${escHtml(value)}" placeholder="${escHtml(placeholder)}"></div>`;
-}
-function buildJsonTextarea(key, value, placeholder = '') {
-    return `<textarea class="code-area csp-field compact-code" data-key="${key}" spellcheck="false" placeholder="${escHtml(placeholder)}">${escHtml(value)}</textarea>`;
 }
 function normalizeCspRegistry(data) {
     const source = { ...(data || {}) };
@@ -1370,8 +1338,7 @@ function normalizeCspRegistry(data) {
     if (!Array.isArray(r.items)) {
         r.items = [];
         if (Array.isArray(r.sites)) r.sites.forEach(site => r.items.push({ kind: 'csp', site, ...site }));
-        if (Array.isArray(r.lives)) r.lives.forEach(live => r.items.push({ kind: 'live', live, ...live }));
-        if (!r.items.length && (source.kind || source.site || source.live || source.key || source.url || source.groups || source.epg)) r.items.push(source);
+        if (!r.items.length && (source.kind || source.site || source.key)) r.items.push(source);
     }
     delete r.sites;
     delete r.lives;
@@ -1382,7 +1349,6 @@ function normalizeCspItem(item, index = 0) {
     item.kind = cspKind(item);
     item.enabled = item.enabled !== false;
     item.id = item.id || (item.kind + '_' + Date.now() + '_' + index);
-    if (item.kind === 'live') return normalizeLiveItem(item, index);
     item.live = null;
     item.site = item.site && typeof item.site === 'object' ? item.site : rawObjectFromItem(item, ['webHome']);
     item.webHome = item.kind === 'webHome';
@@ -1409,45 +1375,6 @@ function normalizeCspItem(item, index = 0) {
     item.styleText = JSON.stringify(item.style || {}, null, 2);
     syncCspSite(item);
     return item;
-}
-function normalizeLiveItem(item, index = 0) {
-    item.kind = 'live';
-    item.webHome = false;
-    item.site = {};
-    item.live = item.live && typeof item.live === 'object' ? item.live : rawObjectFromItem(item, ['webHome', 'key', 'homePage', 'playUrl', 'hide', 'searchable', 'changeable', 'quickSearch', 'indexs', 'categories', 'style']);
-    item.name = item.name || liveValue(item, 'name', '直播 ' + (index + 1));
-    item.type = liveValue(item, 'type', 0);
-    item.playerType = liveValue(item, 'playerType', 2);
-    item.url = String(liveValue(item, 'url', ''));
-    item.api = String(liveValue(item, 'api', ''));
-    item.ext = liveValue(item, 'ext', '');
-    item.jar = String(liveValue(item, 'jar', ''));
-    item.click = String(liveValue(item, 'click', ''));
-    item.logo = String(liveValue(item, 'logo', ''));
-    item.epg = String(liveValue(item, 'epg', ''));
-    item.ua = String(liveValue(item, 'ua', 'okhttp'));
-    item.origin = String(liveValue(item, 'origin', ''));
-    item.referer = String(liveValue(item, 'referer', ''));
-    item.timeZone = String(liveValue(item, 'timeZone', ''));
-    item.keep = String(liveValue(item, 'keep', ''));
-    item.timeout = liveValue(item, 'timeout', '');
-    item.header = liveValue(item, 'header', {});
-    item.catchup = liveValue(item, 'catchup', {});
-    item.core = liveValue(item, 'core', {});
-    item.groups = liveValue(item, 'groups', []);
-    item.boot = liveValue(item, 'boot', '');
-    item.pass = liveValue(item, 'pass', '');
-    item.headerText = jsonText(item.header, {});
-    item.catchupText = jsonText(item.catchup, {});
-    item.coreText = jsonText(item.core, {});
-    item.groupsText = jsonText(Array.isArray(item.groups) ? item.groups : [], []);
-    syncCspLive(item);
-    return item;
-}
-function syncCspItem(item) { return item.kind === 'live' ? syncCspLive(item) : syncCspSite(item); }
-function assignOptional(object, key, value) {
-    if (value === undefined || value === null || value === '') delete object[key];
-    else object[key] = value;
 }
 function syncCspSite(item) {
     const site = { ...(item.site || {}) };
@@ -1484,40 +1411,6 @@ function syncCspSite(item) {
     item.site = site;
     item.siteText = JSON.stringify(site || {}, null, 2);
 }
-function syncCspLive(item) {
-    const live = { ...(item.live || {}) };
-    item.kind = 'live';
-    item.webHome = false;
-    live.name = item.name || '';
-    assignOptional(live, 'type', item.type === '' || item.type === null || item.type === undefined ? '' : Number(item.type || 0));
-    assignOptional(live, 'playerType', item.playerType === '' || item.playerType === null || item.playerType === undefined ? '' : Number(item.playerType || 0));
-    assignOptional(live, 'url', item.url || '');
-    assignOptional(live, 'api', item.api || '');
-    assignOptional(live, 'ext', item.ext || '');
-    assignOptional(live, 'jar', item.jar || '');
-    assignOptional(live, 'click', item.click || '');
-    assignOptional(live, 'logo', item.logo || '');
-    assignOptional(live, 'epg', item.epg || '');
-    assignOptional(live, 'ua', item.ua || '');
-    assignOptional(live, 'origin', item.origin || '');
-    assignOptional(live, 'referer', item.referer || '');
-    assignOptional(live, 'timeZone', item.timeZone || '');
-    assignOptional(live, 'keep', item.keep || '');
-    if (item.timeout !== '' && item.timeout !== null) live.timeout = Number(item.timeout || 0); else delete live.timeout;
-    if (item.boot === true || item.boot === false) live.boot = !!item.boot; else delete live.boot;
-    if (item.pass === true || item.pass === false) live.pass = !!item.pass; else delete live.pass;
-    assignOptionalJson(live, 'header', item.header);
-    assignOptionalJson(live, 'catchup', item.catchup);
-    assignOptionalJson(live, 'core', item.core);
-    assignOptionalJson(live, 'groups', Array.isArray(item.groups) ? item.groups : []);
-    item.site = {};
-    item.live = live;
-    item.headerText = jsonText(live.header, {});
-    item.catchupText = jsonText(live.catchup, {});
-    item.coreText = jsonText(live.core, {});
-    item.groupsText = jsonText(live.groups, []);
-    item.liveText = JSON.stringify(live || {}, null, 2);
-}
 function stripCspMeta(registry) {
     const copy = JSON.parse(JSON.stringify(registry || {}));
     delete copy.active;
@@ -1535,35 +1428,26 @@ function renderCspManage() {
     cspRawDirty = false;
 }
 function cspItemValid(item) {
-    if (item.kind === 'live') return !!item.name && (!!item.url || !!(Array.isArray(item.groups) && item.groups.length) || !!(item.live && Array.isArray(item.live.groups) && item.live.groups.length));
     return item.webHome ? !!item.homePage : !!item.api;
 }
 function buildCspCard(item, index) {
     const invalid = item.enabled && !cspItemValid(item) ? ' invalid' : '';
     const title = item.name || cspKindName(item.kind);
     const source = item.webHome ? `<div class="source-actions"><button class="md-btn md-btn-tonal md-btn-compact" type="button" onclick="chooseCspFile(${index})">文件</button><button class="md-btn md-btn-tonal md-btn-compact" type="button" onclick="openCspCode(${index})">代码</button><button class="md-btn md-btn-tonal md-btn-compact" type="button" onclick="openCspLink(${index})">链接</button></div>` : '';
-    const typeButtons = `<div class="segmented csp-type-toggle"><button class="segment ${item.kind === 'webHome' ? 'active' : ''}" onclick="setCspKind(${index},'webHome')" type="button">WebHome</button><button class="segment ${item.kind === 'csp' ? 'active' : ''}" onclick="setCspKind(${index},'csp')" type="button">通用 CSP</button><button class="segment ${item.kind === 'live' ? 'active' : ''}" onclick="setCspKind(${index},'live')" type="button">直播</button></div>`;
-    const nameRow = item.kind === 'live'
-        ? `<div class="field-row compact">${buildLiveTextField('name', '名称', item.name, '直播名称', true)}</div>`
-        : `<div class="field-row compact"><input class="md-input csp-field" data-key="name" value="${escHtml(item.name)}" placeholder="名称"><input class="md-input csp-field" data-key="key" value="${escHtml(item.key)}" placeholder="Key"></div>`;
-    const homeLine = item.kind === 'live' ? '' : `<div class="csp-home-line">${buildHomeCheck(item, index)}${source}</div>`;
-    const homePage = item.kind === 'live' ? '' : `<div class="md-field"><input class="md-input csp-field" data-key="homePage" value="${escHtml(item.homePage)}" placeholder="${item.webHome ? 'WebHome 地址' : 'WebHome 首页地址，可选'}"></div>`;
-    const fields = item.kind === 'live' ? buildLiveFields(item) : item.webHome ? buildAdvancedSiteFields(item) : buildCommonCspFields(item);
+    const typeButtons = `<div class="segmented csp-type-toggle"><button class="segment ${item.kind === 'webHome' ? 'active' : ''}" onclick="setCspKind(${index},'webHome')" type="button">WebHome</button><button class="segment ${item.kind === 'csp' ? 'active' : ''}" onclick="setCspKind(${index},'csp')" type="button">通用 CSP</button></div>`;
+    const nameRow = `<div class="field-row compact"><input class="md-input csp-field" data-key="name" value="${escHtml(item.name)}" placeholder="名称"><input class="md-input csp-field" data-key="key" value="${escHtml(item.key)}" placeholder="Key"></div>`;
+    const homeLine = `<div class="csp-home-line">${buildHomeCheck(item, index)}${source}</div>`;
+    const homePage = `<div class="md-field"><input class="md-input csp-field" data-key="homePage" value="${escHtml(item.homePage)}" placeholder="${item.webHome ? 'WebHome 地址' : 'WebHome 首页地址，可选'}"></div>`;
+    const fields = item.webHome ? buildAdvancedSiteFields(item) : buildCommonCspFields(item);
     return `<div class="manage-card csp-card${invalid}" data-index="${index}"><div class="csp-head"><div class="csp-title-block"><label class="check-row"><input class="csp-field" data-key="enabled" type="checkbox" ${item.enabled ? 'checked' : ''}><span>${escHtml(title)}</span></label>${typeButtons}</div><div class="card-actions"><button class="file-action" type="button" onclick="moveCspItem(${index},-1)">上移</button><button class="file-action" type="button" onclick="moveCspItem(${index},1)">下移</button><button class="file-action danger" type="button" onclick="removeCspItem(${index})">删除</button></div></div>${nameRow}${homeLine}${homePage}${fields}</div>`;
 }
 function buildHomeCheck(item, index) { return `<label class="check-row"><input class="csp-home" type="checkbox" ${cspRegistry.homeKey === item.key ? 'checked' : ''} onchange="setCspHome(${index},this.checked)"><span>设为首页</span></label>`; }
 function buildCommonCspFields(item) {
     return `<div class="field-row compact"><input class="md-input mini-input csp-field" data-key="type" type="number" value="${escHtml(item.type)}" placeholder="类型"><input class="md-input csp-field" data-key="api" value="${escHtml(item.api)}" placeholder="API / CSP 类名"></div><div class="field-row compact"><input class="md-input csp-field" data-key="jar" value="${escHtml(item.jar)}" placeholder="Jar"><input class="md-input csp-field" data-key="ext" value="${escHtml(typeof item.ext === 'string' ? item.ext : JSON.stringify(item.ext))}" placeholder="Ext"></div><div class="field-row compact"><input class="md-input csp-field" data-key="click" value="${escHtml(item.click)}" placeholder="点击脚本"><input class="md-input csp-field" data-key="playUrl" value="${escHtml(item.playUrl)}" placeholder="播放前缀"></div><div class="field-row compact"><input class="md-input mini-input csp-field" data-key="indexs" type="number" value="${escHtml(item.indexs)}" placeholder="索引"><input class="md-input mini-input csp-field" data-key="timeout" type="number" value="${escHtml(item.timeout)}" placeholder="超时秒"><input class="md-input csp-field" data-key="categories" value="${escHtml((item.categories || []).join(','))}" placeholder="分类，逗号分隔"></div><div class="flag-grid"><label class="check-row"><input class="csp-field" data-key="hide" type="checkbox" ${item.hide ? 'checked' : ''}><span>隐藏</span></label><label class="check-row"><input class="csp-field" data-key="searchable" type="checkbox" ${item.searchable ? 'checked' : ''}><span>搜索</span></label><label class="check-row"><input class="csp-field" data-key="changeable" type="checkbox" ${item.changeable ? 'checked' : ''}><span>换源</span></label><label class="check-row"><input class="csp-field" data-key="quickSearch" type="checkbox" ${item.quickSearch ? 'checked' : ''}><span>快搜</span></label></div><details class="advanced-panel"><summary>高级参数</summary><label class="form-label">Header JSON</label><textarea class="code-area csp-field compact-code" data-key="headerText" spellcheck="false" placeholder="Header JSON">${escHtml(item.headerText)}</textarea><label class="form-label">Style JSON</label><textarea class="code-area csp-field compact-code" data-key="styleText" spellcheck="false" placeholder="Style JSON">${escHtml(item.styleText)}</textarea>${buildAdvancedSiteFields(item, false)}</details>`;
 }
-function buildLiveFields(item) {
-    return `<div class="field-row compact live-common-row">${buildLiveTextField('url', '直播地址', item.url, 'http(s):// 或本地路径', true, 'URL/分组至少一项')}</div><div class="field-row compact">${buildLiveTextField('ua', 'UA', item.ua, 'okhttp')}${buildLiveTextField('epg', 'EPG', item.epg, 'http://...{name}...')}${buildLiveTextField('logo', 'Logo', item.logo, 'https://.../{name}.png')}</div>${buildAdvancedLiveFields(item)}`;
-}
 function buildAdvancedSiteFields(item, wrap = true) {
     const field = `<label class="form-label">完整 Site JSON</label><textarea class="code-area csp-field compact-code" data-key="siteText" spellcheck="false" placeholder="完整站点 JSON，可填写 docs/应用完整开发文档.md 里的其它字段">${escHtml(item.siteText)}</textarea>`;
     return wrap ? `<details class="advanced-panel"><summary>高级 Site JSON</summary>${field}</details>` : field;
-}
-function buildAdvancedLiveFields(item) {
-    return `<details class="advanced-panel"><summary>高级直播参数（可选）</summary><div class="field-row compact advanced-field-row">${buildLiveTextField('api', 'API', item.api, 'raw 兼容字段')}${buildLiveTextField('ext', 'Ext', typeof item.ext === 'string' ? item.ext : JSON.stringify(item.ext), 'raw 兼容字段')}${buildLiveTextField('timeout', '超时秒', item.timeout, '', false, '可选', 'number', 'short')}</div><div class="field-row compact advanced-field-row">${buildLiveTextField('jar', 'Jar', item.jar, 'raw 兼容字段')}${buildLiveTextField('click', '点击脚本', item.click, '可选')}${buildLiveTextField('keep', 'Keep', item.keep, '分组@@频道@@线路，可选')}</div><div class="field-row compact advanced-field-row">${buildLiveTextField('origin', 'Origin', item.origin, '可选')}${buildLiveTextField('referer', 'Referer', item.referer, '可选')}${buildLiveTextField('timeZone', '时区', item.timeZone, 'Asia/Shanghai')}</div><div class="flag-grid live-flag-grid"><label class="check-row"><input class="csp-field" data-key="boot" type="checkbox" ${item.boot ? 'checked' : ''}><span>启动进入</span></label><label class="check-row"><input class="csp-field" data-key="pass" type="checkbox" ${item.pass ? 'checked' : ''}><span>跳过分组</span></label></div>${buildFieldLabel('Header JSON')}${buildJsonTextarea('headerText', item.headerText, 'Header JSON，例如 {"User-Agent":"okhttp"}')}${buildFieldLabel('Catchup JSON')}${buildJsonTextarea('catchupText', item.catchupText, 'Catchup JSON')}${buildFieldLabel('Core JSON')}${buildJsonTextarea('coreText', item.coreText, 'Core JSON')}${buildFieldLabel('Groups JSON')}${buildJsonTextarea('groupsText', item.groupsText, 'Groups 数组')}${buildFieldLabel('完整 Live JSON')}${buildJsonTextarea('liveText', item.liveText, '完整直播 JSON，可包含 raw JSON 的所有字段')}</details>`;
 }
 function updateCspGlobal() {
     if (!cspRegistry) return;
@@ -1581,20 +1465,16 @@ function syncCspFromCards(updateRaw = true) {
         const item = cspRegistry.items[Number($(this).data('index'))];
         $(this).find('.csp-field').each(function () {
             const key = $(this).data('key');
-            if (this.type === 'checkbox') item[key] = ['enabled', 'boot', 'pass'].includes(key) ? this.checked : (this.checked ? 1 : 0);
-            else if (['type', 'playerType', 'hide', 'searchable', 'changeable', 'quickSearch', 'indexs'].includes(key)) item[key] = this.value === '' ? '' : Number(this.value || 0);
+            if (this.type === 'checkbox') item[key] = key === 'enabled' ? this.checked : (this.checked ? 1 : 0);
+            else if (['type', 'hide', 'searchable', 'changeable', 'quickSearch', 'indexs'].includes(key)) item[key] = this.value === '' ? '' : Number(this.value || 0);
             else if (key === 'timeout') item[key] = this.value === '' ? '' : Number(this.value || 0);
             else if (key === 'categories') item[key] = this.value.split(',').map(x => x.trim()).filter(Boolean);
             else if (key === 'headerText') item.header = parseJsonField(this.value, {});
             else if (key === 'styleText') item.style = parseJsonField(this.value, {});
             else if (key === 'siteText') item.site = parseJsonField(this.value, item.site || {});
-            else if (key === 'catchupText') item.catchup = parseOptionalJsonField(this.value, item.catchup || {}, {});
-            else if (key === 'coreText') item.core = parseOptionalJsonField(this.value, item.core || {}, {});
-            else if (key === 'groupsText') item.groups = parseOptionalJsonField(this.value, item.groups || [], []);
-            else if (key === 'liveText') item.live = parseJsonField(this.value, item.live || {});
             else item[key] = this.value.trim();
         });
-        syncCspItem(item);
+        syncCspSite(item);
     });
     if (updateRaw) {
         $('#cspRaw').val(JSON.stringify(stripCspMeta(cspRegistry), null, 2));
@@ -1602,10 +1482,6 @@ function syncCspFromCards(updateRaw = true) {
     }
 }
 function parseJsonField(text, fallback) { try { return text && text.trim() ? JSON.parse(text) : fallback; } catch (e) { warnToast('JSON 格式无效，已保留为空对象'); return fallback; } }
-function parseOptionalJsonField(text, fallback, emptyValue) {
-    try { return text && text.trim() ? JSON.parse(text) : emptyValue; }
-    catch (e) { warnToast('JSON 格式无效，已保留原值'); return fallback; }
-}
 function addCspItem(kind) {
     if (!cspRegistry) cspRegistry = normalizeCspRegistry({});
     syncCspFromCards(false);
@@ -1615,40 +1491,30 @@ function addCspItem(kind) {
     const n = cspRegistry.items.filter(x => x.kind === kind).length + 1;
     const name = cspKindName(kind) + ' ' + n;
     const seed = { kind, webHome: kind === 'webHome', name };
-    if (kind === 'live') seed.live = liveDefaultObject(name);
     cspRegistry.items.push(normalizeCspItem(seed, cspRegistry.items.length));
     renderCspManage();
 }
-function removeCspItem(index) { syncCspFromCards(false); const item = cspRegistry.items[index]; if (item && item.kind !== 'live' && cspRegistry.homeKey === item.key) cspRegistry.homeKey = ''; cspRegistry.items.splice(index, 1); renderCspManage(); }
+function removeCspItem(index) { syncCspFromCards(false); const item = cspRegistry.items[index]; if (item && cspRegistry.homeKey === item.key) cspRegistry.homeKey = ''; cspRegistry.items.splice(index, 1); renderCspManage(); }
 function moveCspItem(index, delta) { syncCspFromCards(false); const targetIndex = index + delta; if (targetIndex < 0 || targetIndex >= cspRegistry.items.length) return; const item = cspRegistry.items.splice(index, 1)[0]; cspRegistry.items.splice(targetIndex, 0, item); renderCspManage(); }
-function setCspHome(index, checked) { syncCspFromCards(false); const item = cspRegistry.items[index]; if (!item || item.kind === 'live') return; cspRegistry.homeKey = checked ? item.key : ''; renderCspManage(); }
+function setCspHome(index, checked) { syncCspFromCards(false); const item = cspRegistry.items[index]; if (!item) return; cspRegistry.homeKey = checked ? item.key : ''; renderCspManage(); }
 function setCspKind(index, kind) {
     syncCspFromCards(false);
     const item = cspRegistry.items[index];
     if (kind === true) kind = 'webHome';
     if (kind === false) kind = 'csp';
     if (!item || item.kind === kind || !CSP_KINDS.includes(kind)) return;
-    const oldKind = item.kind;
-    const oldAuto = /^(WebHome|通用 CSP|直播) \d+$/.test(item.name || '');
-    if (item.kind !== 'live' && kind === 'live' && cspRegistry.homeKey === item.key) cspRegistry.homeKey = '';
+    const oldAuto = /^(WebHome|通用 CSP) \d+$/.test(item.name || '');
     item.kind = kind;
     item.webHome = kind === 'webHome';
     if (kind === 'webHome') {
-        if (oldKind === 'live') item.type = 3;
         item.api = '';
         item.ext = '';
         item.jar = '';
         item.searchable = 0;
         item.quickSearch = 0;
     } else if (kind === 'csp') {
-        if (oldKind === 'live') item.type = 3;
         item.searchable = 1;
         item.quickSearch = 1;
-    } else if (kind === 'live') {
-        item.live = { ...liveDefaultObject(item.name), ...(item.live || {}) };
-        item.type = liveValue(item, 'type', 0);
-        item.playerType = liveValue(item, 'playerType', 2);
-        item.ua = String(liveValue(item, 'ua', 'okhttp'));
     }
     if (oldAuto) {
         const n = cspRegistry.items.filter((x, i) => i !== index && x.kind === kind).length + 1;
@@ -1710,7 +1576,7 @@ function saveCspManage() {
     if (!cspRawDirty) syncCspFromCards(true);
     try { cspRegistry = normalizeCspRegistry(JSON.parse($('#cspRaw').val().trim() || '{}')); }
     catch (e) { warnToast('站点注入 JSON 格式无效'); return; }
-    cspRegistry.items.forEach(syncCspItem);
+    cspRegistry.items.forEach(syncCspSite);
     postJson('/manage/csp', { registry: JSON.stringify(stripCspMeta(cspRegistry)) }, data => { cspRegistry = normalizeCspRegistry(data); renderCspManage(); warnToast('站点注入已保存'); });
 }
 
@@ -1938,7 +1804,6 @@ function renderConfigsManage() {
     const active = configsData.filter(item => item.active).length;
     $('#configsSummary').text(`${configsData.length} 个接口 · 当前启用 ${active}`);
     $('#configFilterVod').toggleClass('active', configFilter === 0);
-    $('#configFilterLive').toggleClass('active', configFilter === 1);
     $('#configFilterWall').toggleClass('active', configFilter === 2);
     $('#configList').html(filtered.map(buildConfigCard).join('') || '<div class="empty-state">暂无接口配置</div>');
 }
@@ -1965,7 +1830,6 @@ function buildConfigCard(item) {
     </div>`;
 }
 function configTypeName(type) {
-    if (Number(type) === 1) return '直播';
     if (Number(type) === 2) return '壁纸';
     return '影视';
 }
