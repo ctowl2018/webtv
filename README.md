@@ -25,6 +25,7 @@
 | 板块 | 内容 |
 | :-- | :-- |
 | [**项目简介**](#项目简介) | 定位、边界、适合谁 |
+| [**界面预览**](#界面预览) | Leanback（电视端）实机截图 |
 | [**与上游的主要差异**](#与上游的主要差异) | 本次二次开发做了什么 |
 | [**核心能力**](#核心能力) | 播放 / 配置 / WebHome / 安全 / 发布 |
 | [**下载与安装**](#下载与安装) | 安装包与选型 |
@@ -51,7 +52,7 @@
 - 导入点播 / 直播配置（URL、文件、assets、局域网同步）
 - WebHome：给站点配独立网页首页，并开放原生能力给网页
 - 配置、历史、收藏、登录态在手机与电视间一键同步
-- 局域网管理页 + 可自托管的公网遥控
+- 局域网管理页 + 可自托管的公网遥控（服务端源码随仓库给出，设置页入口已精简）
 
 </td><td>
 
@@ -67,6 +68,30 @@
 
 ---
 
+## 界面预览
+
+以下为 **Android TV（Leanback）** 版本实机截图，出自本仓库当前代码：
+
+| 启动欢迎页 | 首页 |
+| :--: | :--: |
+| <img src="docs/images/leanback-splash.jpg" alt="启动欢迎页" width="420" /> | <img src="docs/images/leanback-home.jpg" alt="首页" width="420" /> |
+
+| 分类导航页 | 搜索页 |
+| :--: | :--: |
+| <img src="docs/images/leanback-category.jpg" alt="分类导航页" width="420" /> | <img src="docs/images/leanback-search.jpg" alt="搜索页" width="420" /> |
+
+| 搜索结果页 | 收藏页 |
+| :--: | :--: |
+| <img src="docs/images/leanback-search-result.jpg" alt="搜索结果页" width="420" /> | <img src="docs/images/leanback-keep.jpg" alt="收藏页" width="420" /> |
+
+| 播放详情页 | 播放全屏页 |
+| :--: | :--: |
+| <img src="docs/images/leanback-vod-detail.jpg" alt="播放详情页" width="420" /> | <img src="docs/images/leanback-player.jpg" alt="播放全屏页" width="420" /> |
+
+> 截图中的站点名称、源站标签等敏感信息均已做马赛克处理。
+
+---
+
 ## 与上游的主要差异
 
 本节说明本仓库（`ctowl2018/webtv`）相对 `motao123/webtv` 上游所做的具体改动，便于你判断是否需要跟进上游更新：
@@ -75,12 +100,16 @@
   - 首页分类导航改为与分类页一致的分页切换，导航常驻、焦点逻辑统一。
   - 海报选中态只保留片名条反馈（160ms 过渡），控制条渐变加深、放大溢出安全区重做。
   - 弹幕样式、顶部品牌栏与时间格式（统一 `HH:mm` + 加粗无衬线）整体对齐。
-- **设置精简**：移除设置菜单中的「关于」项；屏蔽「版本」项的应用内更新检查入口（版本号仍展示）。
+- **设置精简**：设置菜单面向普通用户做了瘦身——
+  - 移除「关于」项；「版本」项仅保留版本号展示，屏蔽应用内更新检查入口。
+  - 移除**公网远程遥控**、**播放记录同步开关**、**无痕模式**、**DoH 切换**等高级/小众开关。
+  - 「增强功能」子页移除**调试日志**、**CSP 预热**、**站点注入**、**Git 云盘**、**站点健康排序**等开发者向条目。
+  - 保留仍具实用价值的：网盘检测、管理页面、代理设置、家庭过滤、登录态学习、一键同步、播放记录同步的详细配置。
 - **不预置内置源/接口**：点播、直播、弹幕均不在代码里内置任何默认地址，首次启动留空，由用户在设置中填写自己的合法配置源。
 - **运行时不带 Python**：构建中已剥离 Chaquopy/Python 运行时（见[技术栈](#技术栈)与[工程结构](#工程结构)），所有变体均不含 Python 类型直播源支持。
 - **仅简体中文**：移除了英文 / 繁体中文资源，任何系统语言下均走中文界面。
 
-除上述差异外，播放内核、扩展运行时（QuickJS / Jar / HTTP 站源）、WebHome、局域网管理、公网遥控等能力与上游保持一致。
+除上述差异外，播放内核、扩展运行时（QuickJS / Jar / HTTP 站源）、WebHome、局域网管理、公网遥控等能力与上游保持一致（其中公网遥控的服务端源码仍在仓库中，仅设置页不再提供入口）。
 
 ---
 
@@ -132,14 +161,14 @@
 
 ### 发布与更新
 
+> 以下能力属于底层实现；本仓库设置页已**屏蔽「版本」项的应用内更新检查入口**，普通用户请直接下载新版 APK 覆盖安装（同签名不丢数据）。
+
 | 能力 | 说明 |
 | :-- | :-- |
 | 多源更新 | GitHub Release / 自建镜像多源切换 |
 | 断点续传 | 中断保留进度，同源最多重试 3 次，耗尽后换源并按 HTTP Range 续传 |
 | 多重校验 | 体积 → SHA-256 → 包名 → versionCode/versionName → 签名指纹 |
 | 安装兜底 | 自动安装失败时导出 APK 到 Downloads 手动安装 |
-
-> 注：本仓库设置页已**移除「版本」项的应用内更新检查入口**；如需更新，请直接下载新版 APK 覆盖安装（同签名不丢数据）。
 
 ---
 
@@ -185,7 +214,9 @@
 常用入口：
 
 ```text
-设置 → 增强功能      网盘检测 · 管理页面 · WebHome 扩展 · 登录态学习 · 一键同步 · 调试日志
+设置 → 增强功能      网盘检测 · 管理页面 · 代理设置 · 家庭过滤 · 登录态学习 · 一键同步 · 播放记录同步
+设置 → 播放器设置    内核、倍速、字幕、投屏等播放偏好
+设置 → 弹幕设置      弹幕开关、样式、密度、速度、位置
 ```
 
 > **首次启动会弹出「远程依赖确认」**——这是 App 请求你确认加载配置中的远程 jar，属于安全机制。**只信任你自己配置来源的内容**。
@@ -258,6 +289,8 @@ async function playEpisode(vodId, title, pic, episodeUrl) {
 > ⚠️ 端口由 App 动态分配，**请使用 App 显示的完整地址**，不要固定假定为 9978。管理地址与配对凭据属敏感信息，请勿公开分享。
 
 ### 例 4 · 公网遥控（自托管）
+
+> 本仓库设置页已精简，**不再提供公网遥控的图形入口**；如需使用，可参考下述方案自行接入 `serverless/webtv-remote-go` 与 `remote` 模块。
 
 与局域网管理是**两套独立连接**：电视**主动连接**你部署的 HTTPS 中转服务，**不需要、也不应把本地管理端口暴露到公网**。
 
@@ -337,7 +370,8 @@ TV/
 │   └── proguard-rules*.pro     混淆规则（含 ViewBinding 保护）
 ├── catvod/                     CatVod 抽象层与 Spider 接口
 ├── quickjs/                    JavaScript 运行时
-├── docs/                       下载页与封面图
+├── docs/                       下载页（index.html）与图标规范
+│   └── images/                 README 用到的实机截图（站点名已打码）
 ├── webhome-devkit/             WebHome 开发套件（skills / templates / examples）
 ├── serverless/webtv-remote-go/ 自托管公网遥控中转（Go）
 ├── scripts/                    构建与发布脚本
@@ -382,7 +416,8 @@ TV/
 | :-- | :-- |
 | JDK | **21**（`gradle/gradle-daemon-jvm.properties` 已声明工具链 21） |
 | Android SDK | `platforms;android-37`、`build-tools;37.0.0` |
-| Gradle | 使用仓库内置 `gradlew`，无需单独安装 |
+| Gradle | **9.6.1**（使用仓库内置 `gradlew`，无需单独安装） |
+| AGP | **9.2.1**（见 `gradle/libs.versions.toml`） |
 
 > 本仓库已剥离 Python 运行时，**不再需要宿主机安装 Python** 即可编译。
 
@@ -394,7 +429,11 @@ TV/
           :app:compileLeanbackFullArm64_v8aDebugJavaWithJavac \
           :catvod:compileDebugJavaWithJavac
 
-# 打包（末尾 Release 可换 Debug 做本地调试）
+# 打包单个变体调试包（末尾 Release 可换 Debug 做本地调试）
+./gradlew :app:assembleLeanbackFullArm64_v8aDebug
+./gradlew :app:assembleMobileFullArm64_v8aDebug
+
+# 打包（一次产出全部安装包）
 ./gradlew :app:assembleLeanbackFullUniversalRelease
 ./gradlew :app:assembleLeanbackFullArm64_v8aRelease
 ./gradlew :app:assembleLeanbackFullArmeabi_v7aRelease
@@ -405,9 +444,18 @@ TV/
 ./gradlew :app:assembleMobileFullArmeabi_v7aRelease
 ./gradlew :app:assembleMobileLiteUniversalRelease
 ./gradlew :app:assembleMobileLiteArm64_v8aRelease
+
+# 单元测试（与 CI 保持一致）
+./gradlew :app:testLeanbackFullArm64_v8aDebugUnitTest \
+          :app:testMobileFullArm64_v8aDebugUnitTest
+
+# 只跑编译不打包，改动较大时更快
+./gradlew :app:compileLeanbackFullArm64_v8aDebugJavaWithJavac \
+          :app:compileMobileFullArm64_v8aDebugJavaWithJavac
 ```
 
 产物路径：`app/build/outputs/apk/<变体>/release/<包名>.apk`
+测试报告：`app/build/reports/tests/`
 
 **变体矩阵**：`mode`(mobile/leanback) × `edition`(full/lite) × `abi`(universal/arm64_v8a/armeabi_v7a)，任务名规则 `assemble` + Mode + Edition + Abi + `Release`。`lite` 不产出 `armeabi_v7a`，因此 **6 + 4 = 10 个包**。
 
@@ -449,6 +497,9 @@ storePassword=your_store_password
 
 **本地单元测试跑不过，但 CI 是绿的？**
 本地环境容易因测试类未被加入 worker classpath 而报 `ClassNotFoundException`。**以 CI 结果为准**。
+
+**单元测试覆盖了什么？**
+`app/src/test/java/androidx/media3/mpvplayer/` 下集中放置 MPV 内核的策略类测试（HLS 缓存与预载门控、倍速、缓冲进度、清晰度切换、OSD 策略等），均为纯 JVM 单元测试，无需设备。运行方式见[构建与开发](#构建与开发)。
 
 **应用内更新一直失败 / 找不到更新入口？**
 本仓库设置页已移除「版本」项的更新检查入口，请直接下载新版 APK 手动覆盖安装（同签名不丢数据）。
