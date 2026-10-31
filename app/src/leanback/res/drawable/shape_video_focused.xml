@@ -1,8 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 焦点态：半透明白色块（@color/focus_block），不再使用描边线框 -->
+<!--
+  焦点态：白色线框。
+  视频预览元素原先用半透明白色块（@color/focus_block）铺满整个画面做高亮，灰蒙蒙一片；
+  改为只画一圈白色描边，画面本身保持干净。
+  本资源仅供播放页的视频预览元素使用（selector_video → activity_video.xml），
+  其余元素的焦点样式不受影响。
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
 
-    <solid android:color="@color/focus_block" />
+    <solid android:color="@color/transparent" />
+
+    <stroke
+        android:width="2dp"
+        android:color="@color/white" />
 
 </shape>

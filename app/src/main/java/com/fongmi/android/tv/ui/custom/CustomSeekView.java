@@ -73,8 +73,8 @@ public class CustomSeekView extends FrameLayout implements Player.Listener, Time
         focusGlow.setVisibility(INVISIBLE);
         addView(focusGlow, 0, new FrameLayout.LayoutParams(0, 0));
         //进度条的聚焦态不用焦点框：外描一圈白边在电视上更像“被框住”，与按钮的焦点样式也不统一。
-        //改为跟随 timeBar 的焦点把已播放段/滑块/时间文字换成橙色，并在轨道下方淡入一条更厚的橙色光带，
-        //视觉上“变粗”，滑块仍是正圆。
+        //改为跟随 timeBar 的焦点把已播放段/时间文字提亮，并在轨道下方淡入一条更厚的光带，
+        //视觉上“变粗”；拖动滑块（thumb）固定用品牌橙，任何状态下都能看清进度位置，滑块仍是正圆。
         timeBar.setOnFocusChangeListener((view, hasFocus) -> applyFocusStyle(hasFocus));
         applyFocusStyle(false);
         resetView();
@@ -97,8 +97,10 @@ public class CustomSeekView extends FrameLayout implements Player.Listener, Time
 
     private void applyFocusStyle(boolean focused) {
         int accent = ContextCompat.getColor(getContext(), R.color.control_focus);
+        //滑块固定用品牌橙：无论有没有焦点都能一眼看到当前进度位置
+        int scrubber = ContextCompat.getColor(getContext(), R.color.control_scrubber);
         timeBar.setPlayedColor(focused ? accent : Color.WHITE);
-        timeBar.setScrubberColor(focused ? accent : Color.WHITE);
+        timeBar.setScrubberColor(scrubber);
         positionView.setTextColor(focused ? accent : Color.WHITE);
         durationView.setTextColor(focused ? accent : Color.WHITE);
         focusGlow.animate().cancel();

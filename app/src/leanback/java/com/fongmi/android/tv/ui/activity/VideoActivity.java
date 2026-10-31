@@ -160,6 +160,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     //长按按钮弹出的面板关闭后，控制条要回到的那个按钮（一次性）
     private View mReturnFocus;
     private boolean blockCenterKeyUp;
+    //确认键按下时焦点是否落在控制条内：松手时控制条若已被收走，这次松手不能落到播放器头上
+    private boolean enterDownOnControlBar;
     private Boolean mPlayPauseShown;
     //用户刚下发的播放/暂停意图，等 onIsPlayingChanged 回执确认后清空
     private Boolean mPlayPausePending;
@@ -449,7 +451,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.control.action.speedBtn.setUpListener(this::onSpeedAdd);
         mBinding.control.action.speedBtn.setDownListener(this::onSpeedSub);
         mBinding.control.action.speedBtn.setOnClickListener(view -> SpeedSettingDialog.show(this, player()));
-        mBinding.control.action.speedBtn.setOnLongClickListener(view -> onSpeedLong());
+        mBinding.control.action.speedBtn.setOnLongClickListener(view -> {
+            suppressCenterKey();
+            return onSpeedLong();
+        });
         mBinding.control.action.ending.setUpListener(this::onEndingAdd);
         mBinding.control.action.ending.setDownListener(this::onEndingSub);
         mBinding.control.action.opening.setUpListener(this::onOpeningAdd);
@@ -457,10 +462,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.control.action.text.setUpListener(this::onSubtitleClick);
         mBinding.control.action.text.setDownListener(this::onSubtitleClick);
         //播放/暂停：同一个按钮按播放状态轮换图标（换图在 onPaused/onPlay 内部即时完成）
-        mBinding.control.action.playPause.setOnClickListener(view -> {
-            if (player().isPlaying()) onPaused();
-            else onPlay();
-        });
+        mBinding.control.action.playPause.setOnClickListener(view -> togglePlayPause());
         mBinding.control.action.next.setOnClickListener(view -> checkNext());
         mBinding.control.action.prev.setOnClickListener(view -> checkPrev());
         mBinding.control.action.panelBtn.setOnClickListener(view -> onControlPanel());
@@ -473,7 +475,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.control.action.title.setOnClickListener(view -> onTitle());
         mBinding.control.action.chapter.setOnClickListener(view -> onChapter());
         mBinding.control.action.player.setOnClickListener(view -> PlayerEngineDialog.show(this, player()));
-        mBinding.control.action.player.setOnLongClickListener(view -> onPlayerKernel());
+        mBinding.control.action.player.setOnLongClickListener(view -> {
+            suppressCenterKey();
+            return onPlayerKernel();
+        });
         mBinding.control.action.decode.setOnClickListener(view -> onDecode());
         mBinding.control.action.ending.setOnClickListener(view -> onEnding());
         mBinding.control.action.repeat.setOnClickListener(view -> onRepeat());
@@ -490,8 +495,14 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             return true;
         });
         mBinding.control.action.opening.setOnClickListener(view -> onOpening());
-        mBinding.control.action.speed.setOnLongClickListener(view -> onSpeedLong());
-        mBinding.control.action.reset.setOnLongClickListener(view -> onResetToggle());
+        mBinding.control.action.speed.setOnLongClickListener(view -> {
+            suppressCenterKey();
+            return onSpeedLong();
+        });
+        mBinding.control.action.reset.setOnLongClickListener(view -> {
+            suppressCenterKey();
+            return onResetToggle();
+        });
         mBinding.video.setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
         mBinding.flag.addOnChildViewHolderSelectedListener(new FlagSelectionListener(mBinding.flag, mFlagAdapter, this));
         mBinding.episode.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
@@ -508,6 +519,31 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             }
         });
         bindControlFocus();
+        bindControlLongClick();
+    }
+
+    /**
+     * 控制条按钮统一消费长按。
+     * 系统只在控件“可长按”时才做长按判定；没设长按监听器的控件会一直按普通点击处理，
+     * 于是「长按播放/暂停」在松手时又被补了一次 click，把视频切了状态。
+     * 这里给所有可聚焦控件补一个空转的长按监听：长按被吃掉、松手不再触发 click；
+     * 已经有长按动作的按钮（弹幕、倍速等）保持原样，不覆盖。
+     */
+    private void bindControlLongClick() {
+        bindLongClick(mBinding.control.action.getRoot());
+        bindLongClick(mBinding.control.seek);
+    }
+
+    private void bindLongClick(View view) {
+        if (view instanceof ViewGroup group) {
+            for (int i = 0; i < group.getChildCount(); i++) bindLongClick(group.getChildAt(i));
+        }
+        if (!view.isFocusable() || view.isLongClickable()) return;
+        view.setOnLongClickListener(v -> {
+            //松手的 ACTION_UP 一并吞掉，避免落到播放器头上被当成播放/暂停
+            suppressCenterKey();
+            return true;
+        });
     }
 
     /**
@@ -1193,7 +1229,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private void onFullscreen() {
         if (isFullscreen()) exitFullscreen();
         else enterFullscreen();
-        showControl(mBinding.control.action.fullscreen);
+        showControl(mBinding.control.action.playPause);
     }
 
     private void onRepeat() {
@@ -1486,7 +1522,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     private void onToggle() {
         if (isVisible(mBinding.control.getRoot())) hideControl();
-        else showControl(getFocus2());
+        else showControl(mBinding.control.action.playPause);
     }
 
     private void showProgress() {
@@ -1532,6 +1568,11 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         hideControl();
     }
 
+    /**
+     * 呼出播放控制条。
+     * 除「全屏状态下按上键呼出」沿用原有的记忆焦点/片头片尾逻辑外，
+     * 其余场景一律把初始焦点放在「播放/暂停」按钮上（由调用方显式传入）。
+     */
     private void showControl(View view) {
         if (mOsd != null) mOsd.setControlsVisible(true);
         showTopInfo();
@@ -1544,9 +1585,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     /**
      * 控制条里有一批长期 GONE 的按钮（面板转发用），还有弹幕未加载时被隐藏的弹幕按钮。
      * 直接对它们 requestFocus() 会静默失败，控制条显示出来了却没有焦点，遥控器就像失灵一样。
+     * 目标不可聚焦时统一回退到「播放/暂停」：控制条每次呼出的初始焦点都落在这个按钮上。
      */
     private void requestControlFocus(View view) {
-        View target = canTakeControlFocus(view) ? view : mBinding.control.action.next;
+        View target = canTakeControlFocus(view) ? view : mBinding.control.action.playPause;
         if (target == null) return;
         if (target.requestFocus()) return;
         //控件刚 setVisibility(VISIBLE) 时可能还没完成布局，下一帧再试一次
@@ -2105,7 +2147,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         //正在倒计时的自动隐藏要取消，否则暂停后控制条仍会自己消失
         App.removeCallbacks(mR1);
         //暂停即呼出控制条：用户按下暂停多半就是想操作，没必要再手动唤一次
-        if (isGone(mBinding.control.getRoot())) showControl(getFocus2());
+        if (isGone(mBinding.control.getRoot())) showControl(mBinding.control.action.playPause);
     }
 
     private void onPlay() {
@@ -2114,6 +2156,24 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         if (!player().isEmpty() && isIdle()) controller().prepare();
         controller().play();
         if (isVisible(mBinding.control.getRoot())) setR1Callback();
+    }
+
+    /**
+     * 播放/暂停切换：控制条上的「播放/暂停」按钮与进度条焦点按确定键共用这一套逻辑，
+     * 两处行为必须一致，否则会出现「按钮切了、进度条没切」的割裂感。
+     */
+    private void togglePlayPause() {
+        if (service() == null || controller() == null) return;
+        if (player().isPlaying()) onPaused();
+        else onPlay();
+    }
+
+    /**
+     * 焦点是否落在播放进度条上（真正接收遥控器焦点的是进度条本体，不是外层容器）。
+     */
+    private boolean isSeekFocused() {
+        View focus = getCurrentFocus();
+        return focus != null && focus == mBinding.control.seek.getFocusView();
     }
 
     private boolean onSeekBack() {
@@ -2184,12 +2244,27 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             View focus = getCurrentFocus();
             if (isInControlBar(focus)) mFocus2 = focus;
         }
-        //长按弹出面板后的松手事件直接吞掉，避免控制条已隐藏时 Enter 落到播放器切成暂停
         if (KeyUtil.isEnterKey(event)) {
-            if (KeyUtil.isActionDown(event)) blockCenterKeyUp = false;
-            else if (blockCenterKeyUp) {
+            if (KeyUtil.isActionDown(event)) {
+                //只有“首次按下”才重置标记：长按期间系统会持续补发 ACTION_DOWN 重复事件，
+                //每次都重置的话，长按处理器刚立起的抑制窗口会被立刻抹掉，松手照样切播放/暂停。
+                if (event.getRepeatCount() == 0) {
+                    blockCenterKeyUp = false;
+                    enterDownOnControlBar = isVisible(mBinding.control.getRoot()) && isInControlBar(getCurrentFocus());
+                }
+                //焦点落在进度条上时按确定键 = 播放/暂停切换（进度条本身不吃确认键）
+                if (event.getRepeatCount() == 0 && isSeekFocused()) {
+                    togglePlayPause();
+                    return true;
+                }
+            } else {
+                boolean suppressed = blockCenterKeyUp;
                 blockCenterKeyUp = false;
-                return true;
+                //按下时控制条还在、松手时已经不在了：中途弹了面板把控制条收走，
+                //这次松手不能再落到播放器头上被当成“播放/暂停”。
+                boolean barGone = enterDownOnControlBar && isGone(mBinding.control.getRoot());
+                enterDownOnControlBar = false;
+                if (suppressed || barGone) return true;
             }
         }
         if (onEpisodeKey(event)) return true;
@@ -2249,7 +2324,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onKeyDown() {
-        showControl(getFocus2());
+        showControl(mBinding.control.action.playPause);
     }
 
     @Override

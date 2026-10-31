@@ -14,6 +14,8 @@
     <color name="control_focus">#FFFFFF</color>
     <!-- 进度条聚焦光带（白色约 20% 不透明）：垫在轨道下方表达“变粗”，不缩放控件 -->
     <color name="control_focus_glow">#33FFFFFF</color>
+    <!-- 进度条拖动滑块（thumb）颜色：品牌橙，与控制条播放/暂停图标同源，深色轨道上一眼可见 -->
+    <color name="control_scrubber">#FB9350</color>
     <!-- 启动窗口底色：与 startup_logo.jpg / 图标卡片底色同色，保证启动无跳色 -->
     <color name="startup_background">#0C1219</color>
     <!-- 自适应图标背景：与 v2 图标卡片底色 #0C1219 完全一致，遮罩裁切时不露色差 -->
