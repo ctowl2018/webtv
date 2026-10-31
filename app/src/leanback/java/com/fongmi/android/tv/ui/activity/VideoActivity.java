@@ -2444,16 +2444,18 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onKeyCenter() {
-        //先记下“这次是按暂停还是按播放”：pause() 是异步的，调完立刻查 isPlaying 仍为 true，
-        //用旧写法会把刚呼出的控制条又收起来。
-        boolean toPause = player().isPlaying();
-        if (toPause) onPaused();
-        else if (player().isEmpty()) onRefresh();
+        //触摸双击也会走到这里（onDoubleTap），此时服务可能尚未绑定
+        if (service() == null || controller() == null) return;
+        //确定键同时承担“播放/暂停”和“呼出控制条”两个职责，但只有“播放中 → 暂停”这一向才呼出。
+        //onPaused() 内部负责呼出并常显（暂停态控制条常驻），这里不用再补一次。
+        if (player().isPlaying()) {
+            onPaused();
+            return;
+        }
+        //“暂停 → 播放”只恢复播放：不呼出控制条、不续期自动隐藏、也不动当前焦点。
+        //用户想操作控制条时按上/下键即可呼出，不必每恢复一次播放就挡一层。
+        if (player().isEmpty()) onRefresh();
         else onPlay();
-        //确定键也是控制条的呼出入口：还没出来就呼出、焦点交给「播放/暂停」；
-        //已经在显示就只续期自动隐藏计时，不打断用户当前停留的按钮。
-        if (isVisible(mBinding.control.getRoot())) setR1Callback();
-        else showControl(mBinding.control.action.playPause);
     }
 
     @Override
@@ -2504,9 +2506,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             mAudio.consumeBack();
             return;
         }
-        if (isVisible(mBinding.control.getRoot())) {
-            hideControl();
-        } else if (isVisible(mBinding.widget.center)) {
+        //控制条显示中：返回键先收控制条，不退播放页
+        if (hideControlByBack()) return;
+        if (isVisible(mBinding.widget.center)) {
             hideCenter();
         } else if (isFullscreen()) {
             exitFullscreen();
@@ -2515,6 +2517,28 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
             super.onBackInvoked();
         }
+    }
+
+    /**
+     * 返回键收起控制条。
+     *
+     * <p>这一次返回能落到 Activity，说明它没有被弹窗吃掉 —— 弹窗是独立窗口，
+     * 按键在弹窗自己那一层就消费完了。所以这里等价于「弹窗已全部关闭」，必须立即收起控制条。
+     *
+     * <p>不能直接调 {@link #hideControl()}：它在挂起期间会 return，而「轨道面板 → 字幕设置」
+     * 这类串联切换留下的宽限期里挂起还没解除，那样这一下返回会被无声吞掉（按了没反应）。
+     * 这里先解除挂起再收，顺带把轮询也停掉。
+     *
+     * @return 本次返回是否已被控制条消费（false 表示控制条本来就没显示，继续走退出逻辑）
+     */
+    private boolean hideControlByBack() {
+        if (isGone(mBinding.control.getRoot())) return false;
+        //弹窗仍在（极端情况：按键绕过了弹窗窗口）：控制条不响应任何操作，这一下留给弹窗自己关
+        if (hasPanel()) return true;
+        mPanelHolding = false;
+        App.removeCallbacks(mPanelCheck);
+        hideControl();
+        return true;
     }
 
     @Override
