@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  全集选集菜单（控制条「选集」按钮向上弹出的下拉菜单）。
+
+  尺寸全部自适应，具体值由 VideoActivity#layoutEpisodeSheet 算出后回写：
+    · 宽度：按最长集名实测文字宽度，下限 3 个汉字、上限 10 个汉字；超过上限靠条目文字跑马灯横向滚动。
+    · 高度：按整数行算，最多 6 行，且不超过「当前集 + 1」行（保证当前集落在最后一行）；
+      行数不足以装下全部集数时靠 VerticalGridView 纵向滚动。
+  所以这里宽高都写 wrap_content，只负责形状与内边距。
+
+  裁剪必须打开：列表可滚动时，越界的行会被画到圆角之外（深色菜单框外面还浮着几个数字），
+  钳到容器矩形内才是「框内滚动」。
+
+  定位不使用 layout_gravity 居中：菜单左边缘对齐「选集」按钮左边缘，
+  底边贴在按钮上沿上方 EPISODE_SHEET_ANCHOR_GAP，由代码写 leftMargin/bottomMargin。
+
+  上下留白 8dp：列表首尾行不贴边框，跑马灯/焦点块也不会被圆角切掉。
+-->
+<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/shape_episode_sheet"
+    android:clickable="true"
+    android:clipChildren="true"
+    android:clipToPadding="true"
+    android:focusable="false"
+    android:orientation="vertical"
+    android:paddingStart="8dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="8dp"
+    android:visibility="gone">
+
+    <androidx.leanback.widget.VerticalGridView
+        android:id="@+id/list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipChildren="true"
+        android:clipToPadding="true" />
+
+</androidx.appcompat.widget.LinearLayoutCompat>

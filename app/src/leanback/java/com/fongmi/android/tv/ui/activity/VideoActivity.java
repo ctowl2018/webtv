@@ -9,9 +9,11 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
+import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.PathInterpolator;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -77,6 +79,7 @@ import com.fongmi.android.tv.setting.SiteBlockSetting;
 import com.fongmi.android.tv.setting.SiteHealthStore;
 import com.fongmi.android.tv.ui.adapter.ArrayAdapter;
 import com.fongmi.android.tv.ui.adapter.EpisodeAdapter;
+import com.fongmi.android.tv.ui.adapter.EpisodeSheetAdapter;
 import com.fongmi.android.tv.ui.adapter.FlagAdapter;
 import com.fongmi.android.tv.ui.adapter.ParseAdapter;
 import com.fongmi.android.tv.ui.adapter.PartAdapter;
@@ -136,6 +139,13 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private Observer<Result> mObservePlayer;
     private Observer<Result> mObserveSearch;
     private EpisodeAdapter mEpisodeAdapter;
+    private EpisodeSheetAdapter mEpisodeSheetAdapter;
+    //量选集菜单宽度用的临时 TextView（只借它的 paint，不参与布局）
+    private TextView mEpisodeProbe;
+    //选集菜单是否处于打开状态（收起动画期间已置 false，允许用户立刻再点开）
+    private boolean mEpisodeSheetShowing;
+    /** 选集菜单当前选中的下标（倒序列表里的位置），上下键由 {@link #onEpisodeSheetKey(KeyEvent)} 维护 */
+    private int mEpisodeSheetSelected;
     private QualityAdapter mQualityAdapter;
     private ArrayAdapter mArrayAdapter;
     private ParseAdapter mParseAdapter;
@@ -184,6 +194,21 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     //命令下发后等真实状态回执的兜底检查间隔/次数（仅缓冲、命令未落地时才会重试）
     private static final long PLAY_PAUSE_CONFIRM_DELAY = 400;
     private static final int PLAY_PAUSE_CONFIRM_RETRY = 5;
+    //选集菜单的尺寸规则：一屏最多 6 行，宽度按最长集名自适应，下限 3 个汉字、上限 10 个汉字
+    //（行高、字号与 adapter_episode_sheet.xml 保持一致；内边距来自 selector_chip 的 shape padding）
+    private static final int EPISODE_SHEET_ROWS = 6;
+    private static final int EPISODE_SHEET_ITEM_HEIGHT = 44;
+    private static final int EPISODE_SHEET_ITEM_SPACING = 2;
+    private static final int EPISODE_SHEET_TEXT_SIZE = 15;
+    private static final int EPISODE_SHEET_TEXT_PADDING = 12;
+    private static final int EPISODE_SHEET_BOX_PADDING = 8;
+    private static final int EPISODE_SHEET_MIN_CHARS = 3;
+    private static final int EPISODE_SHEET_MAX_CHARS = 10;
+    //菜单下沿与按钮上沿的间距（dp）
+    private static final int EPISODE_SHEET_ANCHOR_GAP = 8;
+    //展开/收起动画时长（ms）：展开略慢于收起，符合 Material 的「进来从容、出去干脆」节奏
+    private static final long EPISODE_SHEET_SHOW_DURATION = 180;
+    private static final long EPISODE_SHEET_HIDE_DURATION = 140;
     private final Runnable mPlayPauseConfirm = this::reconcilePlayPause;
 
     private final ActivityResultLauncher<Intent> mLutDir = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -477,6 +502,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.control.action.playPause.setOnClickListener(view -> togglePlayPause());
         mBinding.control.action.next.setOnClickListener(view -> checkNext());
         mBinding.control.action.prev.setOnClickListener(view -> checkPrev());
+        mBinding.control.action.episodeBtn.setOnClickListener(view -> onEpisodeSheet());
         mBinding.control.action.panelBtn.setOnClickListener(view -> onControlPanel());
         mBinding.control.action.scale.setOnClickListener(view -> onScale());
         mBinding.control.action.lut.setOnClickListener(view -> onLut());
@@ -532,6 +558,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         });
         bindControlFocus();
         bindControlLongClick();
+        bindEpisodeSheet();
     }
 
     /**
@@ -586,6 +613,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
                 mBinding.control.action.playPause,
                 mBinding.control.action.prev,
                 mBinding.control.action.next,
+                mBinding.control.action.episodeBtn,
                 mBinding.control.action.danmaku,
                 mBinding.control.action.text,
                 mBinding.control.action.audio,
@@ -605,6 +633,55 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.control.action.playPause.setNextFocusLeftId(R.id.playPause);
         mBinding.control.action.prev.setNextFocusLeftId(R.id.playPause);
         mBinding.control.action.ending.setNextFocusRightId(R.id.ending);
+    }
+
+    /**
+     * 选集菜单（控制条「选集」按钮弹出的单列浮层）的列表配置。
+     *
+     * <p>一屏最多 {@link #EPISODE_SHEET_ROWS} 行，超出部分靠 VerticalGridView 自己滚动。
+     *
+     * <p><b>选中行钉死在最后一行</b>：窗口对齐点用百分比显式钉在底边（100%），
+     * 条目的对齐点也取 100%（底边），两者一合，选中的那一行就永远贴在菜单最下沿 ——
+     * 按上下键时是内容在它上方滚动，选中行本身不移动，和下拉菜单从按钮往上弹出的方向一致。
+     *
+     * <p>两处都必须显式给百分比，不能只写 {@code setWindowAlignment(HIGH_EDGE)}：
+     * 默认的 {@code WINDOW_ALIGN_OFFSET_PERCENT_DISABLED} 会让 leanback 跳过百分比分支，
+     * 窗口对齐点退回 0（起始边），itemAlignment 也随之算偏一整个列表高度 ——
+     * 实测表现为选中行被顶到菜单上方一整屏。
+     */
+    private void bindEpisodeSheet() {
+        VerticalGridView sheet = mBinding.episodeSheet.list;
+        sheet.setVerticalSpacing(ResUtil.dp2px(EPISODE_SHEET_ITEM_SPACING));
+        sheet.setWindowAlignment(VerticalGridView.WINDOW_ALIGN_HIGH_EDGE);
+        sheet.setWindowAlignmentOffset(0);
+        sheet.setWindowAlignmentOffsetPercent(100f);
+        sheet.setItemAlignmentOffset(0);
+        sheet.setItemAlignmentOffsetPercent(100f);
+        //上下键自己接管：选中行被钉在最后一行之后，焦点没有「往下」的落点，
+        //leanback 的几何搜索会把「上」判到下一项上（实测按上键反而跳到更小的集数，
+        //表现出来就是列表在跳）。这里改成直接按索引 ±1 移动，位置稳。
+        sheet.setOnKeyInterceptListener(this::onEpisodeSheetKey);
+        sheet.setAdapter(mEpisodeSheetAdapter = new EpisodeSheetAdapter(this::onEpisodeSheetClick));
+    }
+
+    /**
+     * 选集菜单里的上下键：翻译成「索引 ±1」，交给 setSelectedPosition 带着贴底一起滚。
+     *
+     * <p>索引和列表的倒序排列一致 —— <b>上 = 更大的集数</b>（往还没看的走），下 = 更小的集数。
+     * 到首尾就吞掉按键，不做出越界移动，也不让焦点溜回控制条。
+     */
+    private boolean onEpisodeSheetKey(KeyEvent event) {
+        if (!mEpisodeSheetShowing) return false;
+        if (event.getAction() != KeyEvent.ACTION_DOWN || event.getRepeatCount() != 0) return false;
+        int delta;
+        if (KeyUtil.isUpKey(event)) delta = -1;
+        else if (KeyUtil.isDownKey(event)) delta = 1;
+        else return false;
+        int position = mEpisodeSheetSelected + delta;
+        if (position < 0 || position >= mEpisodeSheetAdapter.getItemCount()) return true;
+        mEpisodeSheetSelected = position;
+        mBinding.episodeSheet.list.setSelectedPosition(position);
+        return true;
     }
 
     /**
@@ -1679,6 +1756,269 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     /**
+     * 控制条「选集」按钮：从按钮正上方向上展开单列选集菜单。
+     *
+     * <p>走 {@link #showPanel(Runnable)} 而非直接显示，是因为菜单存续期间控制条必须常驻 ——
+     * 菜单贴着「选集」按钮上沿浮出，控制条这时如果自己超时收走，菜单会悬在半空。
+     */
+    private void onEpisodeSheet() {
+        if (mEpisodeAdapter == null || mEpisodeAdapter.getItemCount() == 0) return;
+        //收起动画还没走完时也允许再点开：那一刻 visibility 仍是 VISIBLE，
+        //不能拿它当判据，否则这 100 多毫秒里按钮看着像坏了
+        if (mEpisodeSheetShowing) return;
+        showPanel(this::showEpisodeSheet);
+    }
+
+    /**
+     * 显示选集菜单，并把焦点送到「当前正在播放的那一集」上（该集固定落在最后一行）。
+     *
+     * <p>为什么要连等两帧：第一帧才有「选集」按钮与播放画面的真实坐标，用来算菜单贴在
+     * 按钮正上方所需的偏移；而菜单宽高又依赖这批数据算完回写，回写后列表要按新尺寸重新布局，
+     * 到第二帧 scrollToPosition 才能真正把当前集顶到列表底部。
+     */
+    private void showEpisodeSheet() {
+        List<Episode> items = mEpisodeAdapter.getItems();
+        if (items.isEmpty()) return;
+        mEpisodeSheetAdapter.addAll(items);
+        View sheet = mBinding.episodeSheet.getRoot();
+        mEpisodeSheetShowing = true;
+        //先透明再显示：否则会有一帧完整尺寸的菜单闪出来，向上展开的动画就白做了
+        sheet.animate().cancel();
+        sheet.setAlpha(0f);
+        sheet.setVisibility(View.VISIBLE);
+        sheet.post(() -> {
+            if (isFinishing() || isDestroyed() || !mEpisodeSheetShowing) return;
+            layoutEpisodeSheet(items);
+            int current = mEpisodeSheetAdapter.getPosition();
+            sheet.post(() -> {
+                if (!mEpisodeSheetShowing) return;
+                focusEpisodeSheetCurrent(current);
+                animateEpisodeSheetIn();
+            });
+        });
+    }
+
+    /**
+     * 把选中位置与焦点一起落在当前正在播放的那一集上。
+     *
+     * <p>滚动不在这里做：{@link #bindEpisodeSheet()} 配的「选中项底边对齐窗口底边」
+     * 会在布局阶段把它顶到菜单最后一行，之后每次换集、每次上下滚动都由那套对齐关系维持 ——
+     * 手动算偏移反而会和它对冲，出现「打开时在底部、一按键就跳到顶部」。
+     *
+     * <p>行数在 {@link #layoutEpisodeSheet(List)} 里按「不超过当前集下标 + 1」算过，
+     * 保证这一集上方确实有足够的行可以垫在它上面，不会因为内容不够而顶不上去。
+     */
+    private void focusEpisodeSheetCurrent(int current) {
+        VerticalGridView list = mBinding.episodeSheet.list;
+        mEpisodeSheetSelected = current;
+        list.setSelectedPosition(current);
+        list.requestFocus();
+    }
+
+    /**
+     * 选集菜单的尺寸与定位 —— 宽高都随内容自适应，位置钉在「选集」按钮正上方。
+     *
+     * <p><b>宽度</b>：按最长集名实测文字宽度取值。下限 {@link #EPISODE_SHEET_MIN_CHARS} 个汉字
+     * （集名都是「1」「2」这种短串时，菜单不会缩成一条窄缝），上限
+     * {@link #EPISODE_SHEET_MAX_CHARS} 个汉字（再长就靠条目文字跑马灯横向滚动）。
+     *
+     * <p><b>高度</b>：按整数行算，不出现半行。最多 {@link #EPISODE_SHEET_ROWS} 行，同时不超过
+     * 「当前集在倒序列表里的下标 + 1」行 —— 这样当前集永远落在最后一行，与列表的倒序排列配套；
+     * 可用空间不足时（小窗详情页、带解析源行的高控制条）再往下压，但至少保留一行。
+     *
+     * <p><b>位置</b>：左边缘对齐按钮左边缘，底边贴在按钮上沿上方
+     * {@link #EPISODE_SHEET_ANCHOR_GAP} dp；右侧越界时整体左移贴边，绝不伸出画面。
+     */
+    private void layoutEpisodeSheet(List<Episode> items) {
+        View sheet = mBinding.episodeSheet.getRoot();
+        View anchor = mBinding.control.action.episodeBtn;
+        int boxPadding = ResUtil.dp2px(EPISODE_SHEET_BOX_PADDING);
+        int gap = ResUtil.dp2px(EPISODE_SHEET_ANCHOR_GAP);
+        int itemHeight = ResUtil.dp2px(EPISODE_SHEET_ITEM_HEIGHT);
+        int spacing = ResUtil.dp2px(EPISODE_SHEET_ITEM_SPACING);
+
+        //按钮上沿/左沿在播放画面坐标系里的位置：菜单是 video 的子 View，偏移都相对它算
+        int[] anchorPos = new int[2];
+        int[] parentPos = new int[2];
+        anchor.getLocationInWindow(anchorPos);
+        mBinding.video.getLocationInWindow(parentPos);
+        int anchorTop = anchorPos[1] - parentPos[1];
+        int anchorLeft = anchorPos[0] - parentPos[0];
+        int videoWidth = mBinding.video.getWidth();
+        int videoHeight = mBinding.video.getHeight();
+
+        int width = calculateEpisodeSheetWidth(items, boxPadding);
+
+        //可用高度 = 按钮上沿到画面顶部的距离，再扣掉与按钮的间距、容器上下内边距和一档呼吸空间
+        //（不是「按钮下方」—— 菜单是往上长的）
+        int available = anchorTop - gap - boxPadding * 2 - ResUtil.dp2px(24);
+        //高度按整数行算，一行都不留半截：
+        //  · 最多 EPISODE_SHEET_ROWS 行；
+        //  · 不超过「当前集下标 + 1」行 —— 当前集上方最多只有这么多项，再加行数就只能靠滚动，
+        //    而一滚动当前集就离开最后一行，与「默认停在最下方」直接冲突；
+        //  · 最后被可用空间压一次，能放几行显示几行。
+        int current = mEpisodeSheetAdapter.getPosition();
+        int maxRows = Math.min(items.size(), EPISODE_SHEET_ROWS);
+        int availableRows = Math.max(1, (available + spacing) / (itemHeight + spacing));
+        int rows = Math.max(1, Math.min(Math.min(maxRows, current + 1), availableRows));
+        int height = itemHeight * rows + spacing * (rows - 1);
+        ViewGroup.LayoutParams listParams = mBinding.episodeSheet.list.getLayoutParams();
+        if (listParams.height != height) {
+            listParams.height = height;
+            mBinding.episodeSheet.list.setLayoutParams(listParams);
+        }
+
+        if (!(sheet.getLayoutParams() instanceof ViewGroup.MarginLayoutParams params)) return;
+        int left = Math.max(boxPadding, Math.min(anchorLeft, videoWidth - width - boxPadding));
+        int bottom = videoHeight - anchorTop + gap;
+        if (params.width == width && params.leftMargin == left && params.bottomMargin == bottom) return;
+        params.width = width;
+        params.leftMargin = left;
+        params.bottomMargin = bottom;
+        sheet.setLayoutParams(params);
+    }
+
+    /**
+     * 菜单总宽度 = 条目宽度 + 容器左右内边距。
+     *
+     * <p>条目宽度先按最长集名实测，再夹到「3 个汉字 ~ 10 个汉字」区间；最后再用画面宽度兜一次底 ——
+     * 大字号机型上 10 个汉字可能比画面还宽，那时只能靠条目内跑马灯，不能把菜单撑出屏幕。
+     */
+    private int calculateEpisodeSheetWidth(List<Episode> items, int boxPadding) {
+        float unit = measureEpisodeNameWidth("集");
+        int textPadding = ResUtil.dp2px(EPISODE_SHEET_TEXT_PADDING) * 2;
+        int min = (int) Math.ceil(unit * EPISODE_SHEET_MIN_CHARS) + textPadding;
+        int max = (int) Math.ceil(unit * EPISODE_SHEET_MAX_CHARS) + textPadding;
+        int longest = 0;
+        for (Episode item : items) longest = Math.max(longest, (int) Math.ceil(measureEpisodeNameWidth(item.getDisplayName())));
+        int itemWidth = Math.min(Math.max(longest + textPadding, min), max);
+        return Math.min(itemWidth + boxPadding * 2, mBinding.video.getWidth() - boxPadding * 2);
+    }
+
+    /**
+     * 按选集条目真实字号量文字宽度。
+     *
+     * <p>借一个临时 TextView 取 paint，而不是自己 {@code new Paint()}：条目的字号/字体将来若调整，
+     * 这里自动跟上，不会出现「量出来刚好 8 个汉字、实际只放得下 6 个」这种对不上号的问题。
+     */
+    private float measureEpisodeNameWidth(CharSequence text) {
+        if (mEpisodeProbe == null) {
+            mEpisodeProbe = new TextView(this);
+            mEpisodeProbe.setTextSize(TypedValue.COMPLEX_UNIT_SP, EPISODE_SHEET_TEXT_SIZE);
+        }
+        return mEpisodeProbe.getPaint().measureText(text, 0, text.length());
+    }
+
+    /**
+     * 收起选集菜单（带收回动画），焦点交还「选集」按钮（此刻控制条仍在）。
+     *
+     * <p>状态位在这里就置 false，而不是等动画结束：这样收起动画的 140ms 内用户再点一次按钮
+     * 能立刻重新展开，不会被判成「已经开着」而无响应。
+     *
+     * @return 本次是否真的收起了菜单（false 表示菜单本来就没开）
+     */
+    private boolean hideEpisodeSheet() {
+        if (!mEpisodeSheetShowing) return false;
+        mEpisodeSheetShowing = false;
+        //焦点不能跟着菜单一起缩走：先交回入口按钮，再做动画
+        if (isInEpisodeSheet(getCurrentFocus())) mBinding.control.action.episodeBtn.requestFocus();
+        animateEpisodeSheetOut();
+        return true;
+    }
+
+    /**
+     * 向上展开：「选集」按钮上方「长出」菜单。
+     *
+     * <p>参数与 {@link #animateEpisodeSheetOut()} 成对，改动时两边一起看：
+     * <ul>
+     *   <li>缩放：scaleY 0 → 1，pivotY 固定在底边，所以视觉上是向上展开而非整体放大；</li>
+     *   <li>位移：translationY 6dp → 0，补一点「从按钮底下顶出来」的手感；</li>
+     *   <li>透明度：0 → 1，遮掉缩放过程中文字被纵向压扁的观感；</li>
+     *   <li>时长 {@link #EPISODE_SHEET_SHOW_DURATION} ms，缓动
+     *       PathInterpolator(0.05, 0.7, 0.1, 1)（Material emphasized-decelerate：起步快、收尾稳）。</li>
+     * </ul>
+     */
+    private void animateEpisodeSheetIn() {
+        View sheet = mBinding.episodeSheet.getRoot();
+        sheet.animate().cancel();
+        sheet.setPivotX(sheet.getWidth() / 2f);
+        sheet.setPivotY(getEpisodeSheetPivotY());
+        sheet.setScaleY(0f);
+        sheet.setTranslationY(ResUtil.dp2px(6));
+        sheet.animate()
+                .scaleY(1f)
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(EPISODE_SHEET_SHOW_DURATION)
+                .setInterpolator(new PathInterpolator(0.05f, 0.7f, 0.1f, 1f))
+                .start();
+    }
+
+    /**
+     * 收起：按对称的反向参数缩回按钮上沿 —— scaleY 1 → 0（pivot 同样在底边）、
+     * alpha 1 → 0、下移 4dp（比展开的 6dp 略小，收回来时不必走那么远）。
+     *
+     * <p>时长 {@link #EPISODE_SHEET_HIDE_DURATION} ms，比展开短 40ms ——
+     * 「进来从容、出去干脆」；缓动 PathInterpolator(0.3, 0, 0.8, 0.15)（emphasized-accelerate）。
+     *
+     * <p>动画结束才真正 GONE，用 {@link #mEpisodeSheetShowing} 判是否还要收：
+     * 期间若用户又点开，这个标记已经是 true，就不会把刚展开的菜单又按回去。
+     */
+    private void animateEpisodeSheetOut() {
+        View sheet = mBinding.episodeSheet.getRoot();
+        sheet.animate().cancel();
+        sheet.setPivotX(sheet.getWidth() / 2f);
+        sheet.setPivotY(getEpisodeSheetPivotY());
+        sheet.animate()
+                .scaleY(0f)
+                .translationY(ResUtil.dp2px(4))
+                .alpha(0f)
+                .setDuration(EPISODE_SHEET_HIDE_DURATION)
+                .setInterpolator(new PathInterpolator(0.3f, 0f, 0.8f, 0.15f))
+                .withEndAction(() -> {
+                    if (mEpisodeSheetShowing) return;
+                    sheet.setVisibility(View.GONE);
+                })
+                .start();
+    }
+
+    /**
+     * 缩放原点（向上展开的「根」）应该落在菜单底边。
+     *
+     * <p>不能直接用 {@code getHeight()}：{@link #layoutEpisodeSheet} 刚回写过尺寸，
+     * 本帧还没来得及重新布局，此时高度可能仍是 0 —— pivot 落在 0 就变成「从顶部往下缩」，
+     * 方向正好反了。所以拿不到实测高度时按回写值兜底。
+     */
+    private int getEpisodeSheetPivotY() {
+        int height = mBinding.episodeSheet.getRoot().getHeight();
+        if (height > 0) return height;
+        int listHeight = mBinding.episodeSheet.list.getLayoutParams().height;
+        return Math.max(listHeight, 0) + ResUtil.dp2px(EPISODE_SHEET_BOX_PADDING) * 2;
+    }
+
+    /**
+     * 确认选集：先收菜单再切集，切集本身复用详情页网格那条链路（onItemClick → 播放）。
+     * 选中的是当前正在播放的那一集时只收菜单，不重头再播一遍。
+     */
+    private void onEpisodeSheetClick(Episode item) {
+        hideEpisodeSheet();
+        if (item == null || item.isSelected()) return;
+        if (isFinishing() || isDestroyed()) return;
+        onItemClick(item);
+    }
+
+    private boolean isInEpisodeSheet(View view) {
+        if (view == null || mBinding == null) return false;
+        ViewGroup sheet = mBinding.episodeSheet.getRoot();
+        Object parent = view;
+        while (parent instanceof View) {
+            if (parent == sheet) return true;
+            parent = ((View) parent).getParent();
+        }
+        return false;
+    }
+
+    /**
      * 从控制条按钮弹出面板的统一入口。
      *
      * <p>面板存续期间控制条常驻：不隐藏、也不跑自动隐藏倒计时；所有面板关闭后
@@ -1729,8 +2069,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         }
     };
 
-    /** 当前是否还有我方弹窗（弹幕设置 / 字幕 / 音轨等）挂在界面上 */
+    /** 当前是否还有我方弹窗（弹幕设置 / 字幕 / 音轨 / 选集菜单等）挂在界面上 */
     private boolean hasPanel() {
+        //选集菜单是同一窗口里的 View 覆盖层，不是 Fragment，得单独判一次
+        if (isVisible(mBinding.episodeSheet.getRoot())) return true;
         for (Fragment fragment : getSupportFragmentManager().getFragments()) {
             if (fragment instanceof BaseBottomSheetDialog) return true;
             if (fragment instanceof BaseSideSheetDialog) return true;
@@ -2381,10 +2723,30 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
      * <p>控制条不可见时两条规则都不成立：此时方向键属于手势层
      * （呼出控制条 / 快进快退 / 上滑调倍速）或详情页的 nextFocus 链，由各自逻辑接管。
      * 详情页（非全屏）即便控制条意外残留，规则二也不生效，免得详情页的按钮导航被误伤。
+     *
+     * <p>此外还有两个不按「控制条内外」划分的特例，都在上面两条规则之前判定：
+     * <ul>
+     *   <li>焦点在<b>进度条</b>上按「上」：进度条已经是控制条最上沿，再往上无处可去，
+     *       这一下直接收起控制条（否则焦点被 nextFocusUp 钉在原处，看着像遥控器失灵）；</li>
+     *   <li>焦点在<b>选集菜单</b>里：菜单是独立浮层、不属于控制条，上下键交给列表自己滚，
+     *       不能落到规则二被整对吞掉。</li>
+     * </ul>
      */
     private boolean onVerticalKey(KeyEvent event) {
         if (!KeyUtil.isUpKey(event) && !KeyUtil.isDownKey(event)) return false;
         if (!isVisible(mBinding.control.getRoot())) return false;
+        //进度条已经在控制条最上沿，再往上没有可去的控件 —— 这一下「上」直接收起控制条，
+        //语义等同于「离开这层操作」。不拦的话视图层会把焦点钉在原处（nextFocusUp 指向自己），
+        //用户会以为遥控器失灵。
+        //只认 ACTION_DOWN：一次按键会成对送来 DOWN/UP，若两者都判，从按钮行按「上」时
+        //DOWN 刚把焦点送到进度条，紧跟着的 UP 又会立刻把控制条收掉 —— 等于按一下就消失。
+        if (KeyUtil.isActionDown(event) && KeyUtil.isUpKey(event) && isSeekFocused()) {
+            hideControl();
+            return true;
+        }
+        //选集菜单里的上下键交给列表自己滚：菜单是独立浮层，不属于控制条，
+        //漏掉这一条就会被下面的「规则二」整对吞掉，表现为菜单能弹出但滚不动。
+        if (isInEpisodeSheet(getCurrentFocus())) return false;
         //规则一：控制条内的上下键交给视图层，Activity 不插手
         if (isInControlBar(getCurrentFocus())) return false;
         //规则二只作用于全屏播放态：详情页的按钮、选集、筛选列表仍走各自的 nextFocus 链
@@ -2506,6 +2868,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
             mAudio.consumeBack();
             return;
         }
+        //选集菜单比控制条更靠上层：返回键先收菜单，再收控制条，最后才退出播放页
+        if (hideEpisodeSheet()) return;
         //控制条显示中：返回键先收控制条，不退播放页
         if (hideControlByBack()) return;
         if (isVisible(mBinding.widget.center)) {

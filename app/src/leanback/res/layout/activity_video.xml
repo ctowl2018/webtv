@@ -79,6 +79,19 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <!--
+          选集菜单：与控制条同属播放画面这一层，从「选集」按钮正上方向上展开。
+          放在同级最后一个，保证压在控制条之上。
+          宽高都随内容自适应（代码回写），这里只把对齐设为左下角；
+          具体的 leftMargin / bottomMargin 由 VideoActivity#layoutEpisodeSheet 按按钮实际位置算。
+        -->
+        <include
+            android:id="@+id/episodeSheet"
+            layout="@layout/view_episode_sheet"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start" />
+
         <!-- 播放页不显示任何 tips（提示窗会压在控制条按钮上），全局提示由 Tip#setBlocked 在播放页整体关闭 -->
 
     </FrameLayout>

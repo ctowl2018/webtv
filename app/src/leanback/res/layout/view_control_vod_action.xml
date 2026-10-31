@@ -48,8 +48,22 @@
         android:layout_marginEnd="1dp"
         android:contentDescription="@string/play_next"
         android:nextFocusLeft="@id/prev"
-        android:nextFocusRight="@id/danmaku"
+        android:nextFocusRight="@id/episodeBtn"
         android:src="@drawable/ic_control_next" />
+
+    <!--
+      选集：紧贴「下一集」，点击在控制条上方弹出单列选集菜单（见 view_episode_sheet.xml）。
+      纯文字按钮，槽位与「片头/片尾」同款（ControlTextSlot，minWidth 58dp），保证与右侧文字组观感一致。
+      没有可切换的集数时由业务层置灰（仍保留焦点，避免焦点链出现空洞）。
+    -->
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/episodeBtn"
+        style="@style/ControlTextSlot"
+        android:layout_marginStart="4dp"
+        android:contentDescription="@string/play_episodes"
+        android:nextFocusLeft="@id/next"
+        android:nextFocusRight="@id/danmaku"
+        android:text="@string/play_episodes" />
 
     <!-- 播放组与后续操作的分隔线：样式/颜色/上下留白沿用 ControlDivider -->
     <View style="@style/ControlDivider" />
@@ -58,7 +72,7 @@
         android:id="@+id/danmaku"
         style="@style/ControlIconSlot"
         android:contentDescription="@string/danmaku"
-        android:nextFocusLeft="@id/next"
+        android:nextFocusLeft="@id/episodeBtn"
         android:nextFocusRight="@id/text"
         android:src="@drawable/selector_control_danmaku"
         android:visibility="gone"

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  选集菜单条目文字色。
+
+  「正在播放的那一集」用品牌橙标出，命中条件是 state_activated 而不是 state_selected：
+  条目还要靠 marquee 横向滚动显示超长集名，而 TextView 只在 focused/selected 时才滚 ——
+  如果拿 selected 表示「当前集」，那一行会永远跑马灯（没聚焦也在动），非常干扰。
+  activated 不影响跑马灯，所以「当前集」用它标。
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/control_scrubber" android:state_activated="true" />
+    <item android:color="@color/text" />
+</selector>

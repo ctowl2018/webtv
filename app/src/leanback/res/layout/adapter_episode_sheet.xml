@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  选集菜单的单行条目。
+
+  外层 FrameLayout 只负责「行高」和「焦点/背景」，文字放在里面用 layout_gravity=center_vertical 居中 ——
+  直接把文字当根、靠 gravity 居中时，文字的垂直位置会受字体 top/bottom（includeFontPadding）影响，
+  不同机型上会看出「上紧下松」；套一层固定高度的容器后，文字盒子是紧贴字形的高度，居中由框架算，
+  与字体度量彻底解耦。
+
+  外层 addStatesFromChildren：文字行拿到焦点时把状态并给容器，@drawable/selector_chip 的
+  state_focused 才会亮（焦点状态在文字上，背景在容器上）。
+
+  「当前正在播放」用 textColor 的 state_activated 标橙，不用 state_selected ——
+  setSelected(true) 会让该行永久跑马灯，未聚焦的行也在动会非常吵。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="44dp"
+    android:addStatesFromChildren="true"
+    android:background="@drawable/selector_chip"
+    android:clipChildren="false"
+    android:clickable="false"
+    android:focusable="false">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:ellipsize="marquee"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:includeFontPadding="false"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:singleLine="true"
+        android:textColor="@color/selector_episode_sheet_text"
+        android:textSize="15sp"
+        tools:text="第 12 集" />
+
+</FrameLayout>

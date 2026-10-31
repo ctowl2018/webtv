@@ -1237,4 +1237,5 @@ WebHomeTV is a player shell. It does not include content sources. Please use law
     <string name="play_more_decode">Decode</string>
     <string name="play_more_scale">Aspect</string>
     <string name="play_more_title">Title</string>
+    <string name="play_episodes">Episodes</string>
 </resources>

@@ -1236,4 +1236,5 @@ WebHomeTV 是播放器壳子，不内置内容源，请使用合法配置。</st
     <string name="play_more_decode">解码</string>
     <string name="play_more_scale">画面比例</string>
     <string name="play_more_title">标题</string>
+    <string name="play_episodes">选集</string>
 </resources>

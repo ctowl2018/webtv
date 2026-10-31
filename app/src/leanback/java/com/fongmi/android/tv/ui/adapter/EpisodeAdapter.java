@@ -13,6 +13,7 @@ import com.fongmi.android.tv.utils.EpisodeTitleCompact;
 import com.fongmi.android.tv.utils.ResUtil;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class EpisodeAdapter extends RecyclerView.Adapter<EpisodeAdapter.ViewHolder> {
@@ -53,6 +54,11 @@ public class EpisodeAdapter extends RecyclerView.Adapter<EpisodeAdapter.ViewHold
     public int getPosition() {
         for (int i = 0; i < mItems.size(); i++) if (mItems.get(i).isSelected()) return i;
         return 0;
+    }
+
+    /** 供选集菜单读取当前列表（含逆序后的顺序），调用方只读 */
+    public List<Episode> getItems() {
+        return Collections.unmodifiableList(mItems);
     }
 
     public int getSelectedPosition() {
