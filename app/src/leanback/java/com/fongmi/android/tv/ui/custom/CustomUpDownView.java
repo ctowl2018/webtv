@@ -93,13 +93,27 @@ public class CustomUpDownView extends MaterialTextView {
      * 目标指向自己等价于「这个方向不移动焦点」（按钮行的按下就是这个约定）。
      */
     private void moveFocus(int key) {
+        int direction;
         int id;
-        if (key == KeyEvent.KEYCODE_DPAD_UP) id = getNextFocusUpId();
-        else if (key == KeyEvent.KEYCODE_DPAD_DOWN) id = getNextFocusDownId();
-        else return;
+        if (key == KeyEvent.KEYCODE_DPAD_UP) {
+            direction = FOCUS_UP;
+            id = getNextFocusUpId();
+        } else if (key == KeyEvent.KEYCODE_DPAD_DOWN) {
+            direction = FOCUS_DOWN;
+            id = getNextFocusDownId();
+        } else {
+            return;
+        }
         if (id == View.NO_ID || id == getId()) return;
-        View target = getRootView().findViewById(id);
-        if (target == null || target == this || !target.isFocusable() || target.getVisibility() != View.VISIBLE) return;
+        //不能写成 getRootView().findViewById(id)：沉浸式音频面板里还有一个同名 timeBar，
+        //窗口级按 id 查找会先命中它（先序），焦点被挪到那个不在控制条内的进度条上。
+        //Activity 的 isInControlBar() 随即判定为「控制条外」，方向键被整对吞掉 ——
+        //表现就是「按上键焦点丢失，而且之后遥控器全失灵」。
+        //focusSearch 的 user-set nextFocus 解析用的是 findViewByPredicateInsideOut，
+        //从本控件往外找最近的同 id 控件，天然只会命中同一条控制条里的那个。
+        View target = focusSearch(direction);
+        if (target == null || target == this) return;
+        if (!target.isFocusable() || target.getVisibility() != View.VISIBLE) return;
         target.requestFocus();
     }
 
