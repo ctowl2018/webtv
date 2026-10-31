@@ -90,15 +90,16 @@ public class CustomUpDownView extends MaterialTextView {
     /**
      * 短按时把焦点交给相邻控件，方向取自 nextFocusUp / nextFocusDown。
      * 目标取不到就留在原地：宁可焦点不动，也不要把它丢出控制条。
+     * 目标指向自己等价于「这个方向不移动焦点」（按钮行的按下就是这个约定）。
      */
     private void moveFocus(int key) {
         int id;
         if (key == KeyEvent.KEYCODE_DPAD_UP) id = getNextFocusUpId();
         else if (key == KeyEvent.KEYCODE_DPAD_DOWN) id = getNextFocusDownId();
         else return;
-        if (id == View.NO_ID) return;
+        if (id == View.NO_ID || id == getId()) return;
         View target = getRootView().findViewById(id);
-        if (target == null || !target.isFocusable() || target.getVisibility() != View.VISIBLE) return;
+        if (target == null || target == this || !target.isFocusable() || target.getVisibility() != View.VISIBLE) return;
         target.requestFocus();
     }
 

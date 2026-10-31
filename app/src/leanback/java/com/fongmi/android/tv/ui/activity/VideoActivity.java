@@ -161,9 +161,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     private Clock mClock;
     private BrandToolbar mBrand;
     private View mFocus1;
-    private View mFocus2;
-    //长按按钮弹出的面板关闭后，控制条要回到的那个按钮（一次性）
-    private View mReturnFocus;
     private boolean blockCenterKeyUp;
     //确认键按下时焦点是否落在控制条内：松手时控制条若已被收走，这次松手不能落到播放器头上
     private boolean enterDownOnControlBar;
@@ -459,7 +456,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         //倍速独立图标按钮：与隐藏的 speed 视图共用同一套逻辑
         mBinding.control.action.speedBtn.setUpListener(this::onSpeedAdd);
         mBinding.control.action.speedBtn.setDownListener(this::onSpeedSub);
-        mBinding.control.action.speedBtn.setOnClickListener(view -> SpeedSettingDialog.show(this, player()));
+        mBinding.control.action.speedBtn.setOnClickListener(view -> onSpeedPanel());
         mBinding.control.action.speedBtn.setOnLongClickListener(view -> {
             suppressCenterKey();
             return onSpeedLong();
@@ -485,11 +482,11 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.control.action.lut.setOnClickListener(view -> onLut());
         mBinding.control.action.share.setOnClickListener(view -> onShare());
         mBinding.control.action.panel.setOnClickListener(view -> onControlPanel());
-        mBinding.control.action.speed.setOnClickListener(view -> SpeedSettingDialog.show(this, player()));
+        mBinding.control.action.speed.setOnClickListener(view -> onSpeedPanel());
         mBinding.control.action.reset.setOnClickListener(view -> onReset());
         mBinding.control.action.title.setOnClickListener(view -> onTitle());
         mBinding.control.action.chapter.setOnClickListener(view -> onChapter());
-        mBinding.control.action.player.setOnClickListener(view -> PlayerEngineDialog.show(this, player()));
+        mBinding.control.action.player.setOnClickListener(view -> onPlayerPanel());
         mBinding.control.action.player.setOnLongClickListener(view -> {
             suppressCenterKey();
             return onPlayerKernel();
@@ -564,9 +561,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     /**
      * 控制条的焦点链：进度条在上、按钮行在下（见 view_control_vod.xml）。
      *
-     * <p><b>规则一（焦点在控制条内）</b>：上/下都不把焦点送出控制条 ——
-     * 向下统一落到「播放/暂停」（按钮行第一个按钮，也是控制条呼出时的默认焦点），
-     * 向上统一回进度条。两端写死，不依赖系统的几何搜索。
+     * <p><b>按上</b>：按钮行任意控件 → 进度条；进度条自己 → 停住（它已经在最上沿）。
+     * <p><b>按下</b>：只有进度条会向下走进按钮行，落点是「播放/暂停」；
+     * 按钮行内部按下**不移动焦点**（各控件的 nextFocusDown 指向自己）。
      *
      * <p>为什么必须显式绑：早期只给 prev/next/danmaku/audio/panelBtn 补过绑定，
      * 而且下方向写成了「指向自己」，playPause / 字幕 / 倍速 / 片头 / 片尾 完全没绑。
@@ -579,12 +576,12 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         View timeBar = mBinding.control.seek.getFocusView();
         if (timeBar == null) return;
         int timeBarId = timeBar.getId();
-        //进度条在控制条最上沿：向上停在自己身上，向下落到「播放/暂停」
+        //进度条在控制条最上沿：上/左/右都停在自己身上，只有「下」落到「播放/暂停」
         timeBar.setNextFocusUpId(timeBarId);
         timeBar.setNextFocusDownId(R.id.playPause);
         timeBar.setNextFocusLeftId(timeBarId);
         timeBar.setNextFocusRightId(timeBarId);
-        //按钮行全部可见可聚焦控件：向上回进度条，向下落到「播放/暂停」
+        //按钮行：向上回进度条；向下指向自己 = 按下键不做任何焦点移动
         View[] slots = {
                 mBinding.control.action.playPause,
                 mBinding.control.action.prev,
@@ -600,7 +597,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         for (View view : slots) {
             if (view == null) continue;
             view.setNextFocusUpId(timeBarId);
-            view.setNextFocusDownId(R.id.playPause);
+            view.setNextFocusDownId(view.getId());
         }
         //水平方向两端封口：边界控件指向自己，按到头就停在原地。
         //早先写的是 setNextFocusLeftId(View.NO_ID)，但 NO_ID 本身就是「没指定」的默认值，
@@ -612,14 +609,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     /**
      * CustomUpDownView（字幕 / 倍速 / 片头 / 片尾）会把方向键消费在视图层，
-     * Activity 的 dispatchKeyEvent 收不到，这里补上「重置自动隐藏计时 + 记住当前焦点」。
+     * Activity 的 dispatchKeyEvent 收不到，这里补上「重置自动隐藏计时」。
      */
     private void onControlKeyConsumed() {
-        if (isVisible(mBinding.control.getRoot())) {
-            setR1Callback();
-            View focus = getCurrentFocus();
-            if (isInControlBar(focus)) mFocus2 = focus;
-        }
+        if (isVisible(mBinding.control.getRoot())) setR1Callback();
     }
 
     private void setRecyclerView() {
@@ -718,7 +711,16 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     private void onControlPanel() {
-        ControlDialog.create().parent(mBinding).history(mHistory).parse(isUseParse()).player(player()).show(this);
+        //播放设置面板也是「从控制条按钮弹出」，期间控制条常驻
+        showPanel(() -> ControlDialog.create().parent(mBinding).history(mHistory).parse(isUseParse()).player(player()).show(this));
+    }
+
+    private void onSpeedPanel() {
+        showPanel(() -> SpeedSettingDialog.show(this, player()));
+    }
+
+    private void onPlayerPanel() {
+        showPanel(() -> PlayerEngineDialog.show(this, player()));
     }
 
     @Override
@@ -738,7 +740,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onTrackPanel(int type) {
-        TrackDialog.create().type(type).player(player()).show(this);
+        //播放设置面板转发过来的轨道入口，同样按“弹窗期间常驻”处理
+        showPanel(() -> TrackDialog.create().type(type).player(player()).show(this));
     }
 
     @Override
@@ -1242,7 +1245,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.brand.getRoot().setVisibility(View.GONE);
         mKeyDown.setFull(true);
         setFullscreen(true);
-        mFocus2 = null;
     }
 
     private void exitFullscreen() {
@@ -1252,7 +1254,6 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         mBinding.brand.getRoot().setVisibility(View.VISIBLE);
         mKeyDown.setFull(false);
         setFullscreen(false);
-        mFocus2 = null;
         hideInfo();
     }
 
@@ -1533,34 +1534,23 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     private void onTrack(View view) {
         //面板打开期间控制条常驻，等面板关掉再恢复自动隐藏
-        holdControl();
-        TrackDialog.create().type(Integer.parseInt(view.getTag().toString())).player(player()).show(this);
-        hideControl();
+        showPanel(() -> TrackDialog.create().type(Integer.parseInt(view.getTag().toString())).player(player()).show(this));
     }
 
     private void onTitle() {
-        TitleDialog.create().player(player()).show(this);
-        hideControl();
+        showPanel(() -> TitleDialog.create().player(player()).show(this));
     }
 
     private void onChapter() {
-        ChapterDialog.create().player(player()).show(this);
-        hideControl();
+        showPanel(() -> ChapterDialog.create().player(player()).show(this));
     }
 
     /**
      * 长按弹幕按钮：打开弹幕设置面板
      */
     private void onDanmaku() {
-        //面板弹出会先收起控制条，这里把「上次按钮」和「返回按钮」都钉在弹幕键上：
-        //否则面板关掉后 getFocus2() 只能回退到默认的「下一集」，焦点会莫名其妙跳走。
-        View danmaku = mBinding.control.action.danmaku;
-        mFocus2 = danmaku;
-        mReturnFocus = danmaku;
         //弹幕设置面板打开期间控制条常驻
-        holdControl();
-        DanmakuDialog.create().player(player()).show(this);
-        hideControl();
+        showPanel(() -> DanmakuDialog.create().player(player()).show(this));
     }
 
     /**
@@ -1618,15 +1608,9 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     //“…”更多按钮已移除：其菜单项（换源/内核/解码/缩放/视频轨/播放设置）分别由播放页的换源按钮
     //与“播放设置”面板（ControlDialog）承接，控制条上只保留一个螺母形的播放设置图标入口。
 
-    private void showTrack(int type) {
-        TrackDialog.create().type(type).player(player()).show(this);
-        hideControl();
-    }
-
     /**
      * 呼出播放控制条。
-     * 除「全屏状态下按上键呼出」沿用原有的记忆焦点/片头片尾逻辑外，
-     * 其余场景一律把初始焦点放在「播放/暂停」按钮上（由调用方显式传入）。
+     * 初始焦点由调用方显式传入：上键呼出传「片头/片尾」，其余呼出方式一律传「播放/暂停」。
      */
     private void showControl(View view) {
         if (mOsd != null) mOsd.setControlsVisible(true);
@@ -1695,11 +1679,25 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     }
 
     /**
+     * 从控制条按钮弹出面板的统一入口。
+     *
+     * <p>面板存续期间控制条常驻：不隐藏、也不跑自动隐藏倒计时；所有面板关闭后
+     * 重新挂上 10 秒自动隐藏（暂停态依旧常驻，见 {@link #setR1Callback()}）。
+     * 凡是从控制条上弹出的面板都走这里，避免漏掉某个入口导致面板开着控制条自己消失。
+     */
+    private void showPanel(Runnable action) {
+        holdControl();
+        action.run();
+    }
+
+    /**
      * 弹窗打开期间把控制条“挂起”：不隐藏、也不走自动隐藏倒计时。
      * 用于弹幕设置面板、字幕设置、音轨选择这类「点了控制条按钮就弹出的面板」——
      * 面板开着的时候控制条如果自己消失，面板关掉后画面会突然少了一截。
      */
     private void holdControl() {
+        //控制条本来就没显示：没什么可挂起的，面板照常弹
+        if (isGone(mBinding.control.getRoot())) return;
         mPanelHolding = true;
         mPanelLastSeen = SystemClock.uptimeMillis();
         App.removeCallbacks(mR1);
@@ -2034,9 +2032,7 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
     @Override
     public void onSubtitleClick() {
         //字幕设置面板打开期间控制条常驻
-        holdControl();
-        SubtitleSettingDialog.create().view(mBinding.exo.getSubtitleView()).player(player()).show(this);
-        App.post(this::hideControl, 100);
+        showPanel(() -> SubtitleSettingDialog.create().view(mBinding.exo.getSubtitleView()).player(player()).show(this));
     }
 
     @Override
@@ -2329,27 +2325,11 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         return mFocus1 == null || mFocus1.getVisibility() != View.VISIBLE ? mBinding.video : mFocus1;
     }
 
-    private View getFocus2() {
-        //刚关掉面板时优先回到发起它的那个按钮（弹幕键），用一次即清空
-        if (mReturnFocus != null) {
-            View view = mReturnFocus;
-            mReturnFocus = null;
-            if (canTakeControlFocus(view)) return view;
-        }
-        if (canTakeControlFocus(mFocus2) && mFocus2 != mBinding.control.action.opening && mFocus2 != mBinding.control.action.ending) return mFocus2;
-        return mBinding.control.action.next;
-    }
-
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (isFullscreen() && KeyUtil.isMenuKey(event)) onToggle();
-        if (isVisible(mBinding.control.getRoot())) {
-            setR1Callback();
-            //只记录控制条内的真实焦点：切换过程中 getCurrentFocus() 会瞬时为 null，
-            //若无条件覆盖，记住的“上次按钮”就被清掉，下次呼出控制条只能回到默认按钮。
-            View focus = getCurrentFocus();
-            if (isInControlBar(focus)) mFocus2 = focus;
-        }
+        //控制条显示期间任何按键都重置自动隐藏计时（暂停态 setR1Callback 内部直接返回，保持常驻）
+        if (isVisible(mBinding.control.getRoot())) setR1Callback();
         if (KeyUtil.isEnterKey(event)) {
             if (KeyUtil.isActionDown(event)) {
                 //只有“首次按下”才重置标记：长按期间系统会持续补发 ACTION_DOWN 重复事件，
@@ -2389,9 +2369,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
      * 所以「在控制条内 / 不在控制条内」天然构成一个不重不漏的划分。
      *
      * <p>规则一（焦点在控制条内）：放行给视图层处理。
-     * 按钮行统一把 nextFocusDown 指向「播放/暂停」（见 {@link #bindControlFocus()}），
-     * CustomUpDownView 系控件（字幕 / 倍速 / 片头 / 片尾）短按松手时按同一目标移焦，
-     * 按上则回到进度条，两端都还在控制条里，不会把焦点甩出去。
+     * 进度条按「下」进按钮行、落点是「播放/暂停」；按钮行内部按「下」不动
+     * （nextFocusDown 指向自己）；按钮行按「上」统一回进度条 —— 见 {@link #bindControlFocus()}。
      * <b>这里必须放行</b>：CustomUpDownView 靠首次 ACTION_DOWN 建立键盘长按判定，
      * 若在此处 return true，倍速与片头片尾的长按连发就再也收不到事件。
      *
@@ -2444,11 +2423,8 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
 
     @Override
     public void onKeyUp() {
-        //刚从面板返回：这一下只负责把控制条呼出并交还给原按钮，不要抢去设片头/片尾
-        if (mReturnFocus != null) {
-            showControl(getFocus2());
-            return;
-        }
+        //上键呼出：初始焦点只按当前进度决定 —— 进度够靠前落「片头」，够靠后落「片尾」，
+        //两头都不满足（片长太短、进度卡在中间算不出可设区间）就退回「播放/暂停」。
         long position = player().getPosition();
         long duration = player().getDuration();
         if (player().canSetOpening(position, duration)) {
@@ -2456,12 +2432,13 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         } else if (player().canSetEnding(position, duration)) {
             showControl(mBinding.control.action.ending);
         } else {
-            showControl(getFocus2());
+            showControl(mBinding.control.action.playPause);
         }
     }
 
     @Override
     public void onKeyDown() {
+        //下键呼出：初始焦点固定为「播放/暂停」
         showControl(mBinding.control.action.playPause);
     }
 
@@ -2473,8 +2450,10 @@ public class VideoActivity extends PlaybackActivity implements CustomKeyDownVod.
         if (toPause) onPaused();
         else if (player().isEmpty()) onRefresh();
         else onPlay();
-        //暂停：控制条由 onPaused 呼出并常显；恢复播放：收起控制条
-        if (!toPause) hideControl();
+        //确定键也是控制条的呼出入口：还没出来就呼出、焦点交给「播放/暂停」；
+        //已经在显示就只续期自动隐藏计时，不打断用户当前停留的按钮。
+        if (isVisible(mBinding.control.getRoot())) setR1Callback();
+        else showControl(mBinding.control.action.playPause);
     }
 
     @Override
